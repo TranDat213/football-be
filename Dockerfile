@@ -1,23 +1,48 @@
-FROM node:lts-alpine
+# Build stage
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy dependency specifications
-COPY package*.json ./
+# Install pnpm
+RUN npm install -g pnpm
 
-# Install dependencies
-RUN npm install
+# Configure pnpm to allow build scripts for Prisma
+RUN pnpm config set only-built-dependencies prisma,@prisma/engines,@prisma/client
 
-# Copy application source
+# Copy package files
+COPY package*.json pnpm-lock.yaml* ./
+COPY prisma ./prisma/
+
+# Install all dependencies (including devDependencies for build)
+RUN pnpm install
+
+# Generate Prisma client
+RUN pnpm exec prisma generate
+
+# Copy source code
 COPY . .
 
-# Build TypeScript to JavaScript
-RUN npm run build
+# Build the application
+RUN pnpm run build
 
-# Expose port (default 3000, adjust if your app uses a different one)
-EXPOSE 3000
+# Production stage
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+# Set environment to production
+ENV NODE_ENV=production
+
+# Copy built application and production dependencies
+# We copy node_modules from builder for simplicity, 
+# but in a more optimized setup we might do a separate pnpm install --prod
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/prisma ./prisma
+
+# Expose port
+EXPOSE 5000
 
 # Start the application
-# Note: Since the start script in package.json is 'node src/app.js', 
-# if it fails because files compile to dist/, we override it to run the compiled file
 CMD ["node", "dist/src/app.js"]

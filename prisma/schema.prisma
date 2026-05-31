@@ -1,0 +1,510 @@
+// schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────
+
+enum UserRole {
+  USER
+  OWNER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+}
+
+enum FieldStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+}
+
+enum YardStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  MOMO
+  VNPAY
+  BANK_TRANSFER
+}
+
+enum ReviewStatus {
+  VISIBLE
+  HIDDEN
+  FLAGGED
+}
+
+enum ReactionType {
+  LIKE
+  DISLIKE
+}
+
+enum PostStatus {
+  OPEN
+  FULL
+  CLOSED
+  CANCELLED
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum TeamMode {
+  NO_TEAM
+  OPTIONAL_TEAM
+  REQUIRED_TEAM
+}
+
+enum TeamSide {
+  TEAM_A
+  TEAM_B
+}
+
+enum JoinStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum MiniPayStatus {
+  UNPAID
+  PARTIAL
+  PAID
+  REFUNDED
+}
+
+enum SkillLevel {
+  ANY
+  BEGINNER
+  INTERMEDIATE
+  PRO
+}
+
+enum MessageRole {
+  USER
+  AI
+  SYSTEM
+}
+
+enum NotificationType {
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  PAYMENT_SUCCESS
+  MATCH_JOINED
+  MATCH_APPROVED
+  REVIEW_REPLY
+  NEW_MATCH_POST
+  SYSTEM
+}
+
+// ─────────────────────────────────────────
+// DOMAIN: USERS
+// ─────────────────────────────────────────
+
+model User {
+  id              String     @id @default(uuid())
+  fullName        String     @map("full_name") @db.VarChar(100)
+  email           String     @unique @db.VarChar(255)
+  password        String?    @db.Text
+  phone           String?    @unique @db.VarChar(20)
+  avatarUrl       String?    @map("avatar_url") @db.Text
+  role            UserRole   @default(USER)
+  status          UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?  @map("email_verified_at")
+  provider        String     @default("LOCAL") @db.VarChar(20)
+  providerId      String?    @map("provider_id") @db.VarChar(255)
+  lastLoginAt     DateTime?  @map("last_login_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  deletedAt       DateTime?  @map("deleted_at")
+
+  // Relations
+  footballFields        FootballField[]
+  bookings              Booking[]
+  reviews               FieldReview[]
+  reviewReactions       FieldReviewReaction[]
+  matchPosts            MatchPost[]
+  matchParticipations   MatchPostParticipant[]
+  sentNotifications     Notification[]         @relation("NotificationActor")
+  receivedNotifications Notification[]         @relation("NotificationRecipient")
+  conversations         Conversation[]
+
+  @@index([role, status])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────
+// DOMAIN: FOOTBALL FIELDS
+// ─────────────────────────────────────────
+
+model FieldCategory {
+  id           String    @id @default(uuid())
+  name         String    @db.VarChar(100)
+  slug         String    @unique @db.VarChar(120)
+  icon         String?   @db.VarChar(100)
+  displayOrder Int       @default(0) @map("display_order")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  footballFields FootballField[]
+
+  @@map("field_categories")
+}
+
+model FootballField {
+  id          String      @id @default(uuid())
+  ownerId     String      @map("owner_id")
+  categoryId  String?     @map("category_id")
+  name        String      @db.VarChar(255)
+  slug        String      @unique @db.VarChar(300)
+  description String?     @db.Text
+  address     String      @db.Text
+  province    String      @db.VarChar(100)
+  district    String      @db.VarChar(100)
+  ward        String?     @db.VarChar(100)
+  latitude    Decimal?    @db.Decimal(10, 8)
+  longitude   Decimal?    @db.Decimal(11, 8)
+  openTime    DateTime?   @map("open_time") @db.Time
+  closeTime   DateTime?   @map("close_time") @db.Time
+  status      FieldStatus @default(PENDING)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  deletedAt   DateTime?   @map("deleted_at")
+
+  owner      User           @relation(fields: [ownerId], references: [id])
+  category   FieldCategory? @relation(fields: [categoryId], references: [id])
+  yards      FieldYard[]
+  images     FieldImage[]
+  reviews    FieldReview[]
+  matchPosts MatchPost[]
+
+  @@index([ownerId, status])
+  @@index([province, district])
+  @@index([latitude, longitude])
+  @@index([deletedAt])
+  @@map("football_fields")
+}
+
+model FieldYard {
+  id              String     @id @default(uuid())
+  footballFieldId String     @map("football_field_id")
+  name            String     @db.VarChar(100)
+  code            String     @db.VarChar(20)
+  type            String     @db.VarChar(50)
+  status          YardStatus @default(ACTIVE)
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  deletedAt       DateTime?  @map("deleted_at")
+
+  footballField  FootballField        @relation(fields: [footballFieldId], references: [id])
+  operatingHours FieldOperatingHour[]
+  priceRules     FieldPriceRule[]
+  bookings       Booking[]
+
+  @@index([footballFieldId])
+  @@map("field_yards")
+}
+
+model FieldImage {
+  id              String    @id @default(uuid())
+  footballFieldId String    @map("football_field_id")
+  url             String    @db.Text
+  publicId        String?   @map("public_id") @db.VarChar(255)
+  isCover         Boolean   @default(false) @map("is_cover")
+  sortOrder       Int       @default(0) @map("sort_order")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  footballField FootballField @relation(fields: [footballFieldId], references: [id])
+
+  @@index([footballFieldId, sortOrder])
+  @@map("field_images")
+}
+
+model FieldOperatingHour {
+  id          String    @id @default(uuid())
+  fieldYardId String    @map("field_yard_id")
+  dayOfWeek   Int       @map("day_of_week") @db.SmallInt
+  openTime    DateTime  @map("open_time") @db.Time
+  closeTime   DateTime  @map("close_time") @db.Time
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  fieldYard FieldYard @relation(fields: [fieldYardId], references: [id])
+
+  @@unique([fieldYardId, dayOfWeek])
+  @@map("field_operating_hours")
+}
+
+model FieldPriceRule {
+  id          String    @id @default(uuid())
+  fieldYardId String    @map("field_yard_id")
+  dayOfWeek   Int?      @map("day_of_week") @db.SmallInt
+  startTime   DateTime  @map("start_time") @db.Time
+  endTime     DateTime  @map("end_time") @db.Time
+  specialDate DateTime? @map("special_date") @db.Date
+  price       Decimal   @db.Decimal(12, 2)
+  label       String?   @db.VarChar(100)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  fieldYard FieldYard @relation(fields: [fieldYardId], references: [id])
+
+  @@index([fieldYardId, dayOfWeek, specialDate])
+  @@map("field_price_rules")
+}
+
+// ─────────────────────────────────────────
+// DOMAIN: BOOKINGS & PAYMENTS
+// ─────────────────────────────────────────
+
+model Booking {
+  id              String        @id @default(uuid())
+  userId          String        @map("user_id")
+  fieldYardId     String        @map("field_yard_id")
+  bookingDate     DateTime      @map("booking_date") @db.Date
+  startTime       DateTime      @map("start_time") @db.Time
+  endTime         DateTime      @map("end_time") @db.Time
+  totalPrice      Decimal       @map("total_price") @db.Decimal(12, 2)
+  status          BookingStatus @default(PENDING)
+  paymentStatus   PaymentStatus @default(UNPAID) @map("payment_status")
+  note            String?       @db.Text
+  cancelledAt     DateTime?     @map("cancelled_at")
+  cancelledReason String?       @map("cancelled_reason") @db.Text
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  deletedAt       DateTime?     @map("deleted_at")
+
+  user      User      @relation(fields: [userId], references: [id])
+  fieldYard FieldYard @relation(fields: [fieldYardId], references: [id])
+  payment   Payment?
+
+  @@index([fieldYardId, bookingDate, startTime, endTime])
+  @@index([userId, status])
+  @@index([bookingDate, status])
+  @@map("bookings")
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  bookingId       String        @unique @map("booking_id")
+  transactionCode String?       @unique @map("transaction_code") @db.VarChar(100)
+  paymentMethod   PaymentMethod @map("payment_method")
+  amount          Decimal       @db.Decimal(12, 2)
+  status          PaymentStatus @default(UNPAID)
+  paidAt          DateTime?     @map("paid_at")
+  gatewayResponse Json?         @map("gateway_response") @db.JsonB
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  deletedAt       DateTime?     @map("deleted_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("payments")
+}
+
+// ─────────────────────────────────────────
+// DOMAIN: REVIEWS
+// ─────────────────────────────────────────
+
+model FieldReview {
+  id         String       @id @default(uuid())
+  fieldId    String       @map("field_id")
+  userId     String       @map("user_id")
+  parentId   String?      @map("parent_id")
+  content    String       @db.Text
+  rating     Int?         @db.SmallInt
+  likeCount  Int          @default(0) @map("like_count")
+  replyCount Int          @default(0) @map("reply_count")
+  status     ReviewStatus @default(VISIBLE)
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+  deletedAt  DateTime?    @map("deleted_at")
+
+  field     FootballField         @relation(fields: [fieldId], references: [id])
+  user      User                  @relation(fields: [userId], references: [id])
+  parent    FieldReview?          @relation("ReviewReplies", fields: [parentId], references: [id])
+  replies   FieldReview[]         @relation("ReviewReplies")
+  reactions FieldReviewReaction[]
+
+  @@index([fieldId, status, deletedAt])
+  @@index([userId, createdAt])
+  @@index([parentId])
+  @@map("field_reviews")
+}
+
+model FieldReviewReaction {
+  id        String       @id @default(uuid())
+  reviewId  String       @map("review_id")
+  userId    String       @map("user_id")
+  type      ReactionType
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  deletedAt DateTime?    @map("deleted_at")
+
+  review FieldReview @relation(fields: [reviewId], references: [id])
+  user   User        @relation(fields: [userId], references: [id])
+
+  @@unique([reviewId, userId])
+  @@map("field_review_reactions")
+}
+
+// ─────────────────────────────────────────
+// DOMAIN: MATCH POSTS
+// ─────────────────────────────────────────
+
+model MatchPost {
+  id                String     @id @default(uuid())
+  userId            String     @map("user_id")
+  footballFieldId   String?    @map("football_field_id")
+  title             String     @db.VarChar(255)
+  content           String     @db.Text
+  matchTime         DateTime   @map("match_time")
+  joinDeadline      DateTime?  @map("join_deadline")
+  maxPlayers        Int        @map("max_players")
+  currentPlayers    Int        @default(0) @map("current_players")
+  pricePerPerson    Decimal?   @map("price_per_person") @db.Decimal(10, 2)
+  skillLevel        SkillLevel @default(ANY) @map("skill_level")
+  visibility        Visibility @default(PUBLIC)
+  status            PostStatus @default(OPEN)
+  teamMode          TeamMode   @default(NO_TEAM) @map("team_mode")
+  teamAName         String?    @map("team_a_name") @db.VarChar(100)
+  teamBName         String?    @map("team_b_name") @db.VarChar(100)
+  teamAMaxSlots     Int?       @map("team_a_max_slots")
+  teamBMaxSlots     Int?       @map("team_b_max_slots")
+  teamACurrentSlots Int        @default(0) @map("team_a_current_slots")
+  teamBCurrentSlots Int        @default(0) @map("team_b_current_slots")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+  deletedAt         DateTime?  @map("deleted_at")
+
+  user          User                   @relation(fields: [userId], references: [id])
+  footballField FootballField?         @relation(fields: [footballFieldId], references: [id])
+  participants  MatchPostParticipant[]
+
+  @@index([status, visibility, matchTime])
+  @@index([userId, status])
+  @@map("match_posts")
+}
+
+model MatchPostParticipant {
+  id            String        @id @default(uuid())
+  matchPostId   String        @map("match_post_id")
+  userId        String        @map("user_id")
+  selectedTeam  TeamSide?     @map("selected_team")
+  quantity      Int           @default(1)
+  amount        Decimal?      @db.Decimal(10, 2)
+  paymentStatus MiniPayStatus @default(UNPAID) @map("payment_status")
+  joinStatus    JoinStatus    @default(PENDING) @map("join_status")
+  joinedAt      DateTime?     @map("joined_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  deletedAt     DateTime?     @map("deleted_at")
+
+  matchPost MatchPost @relation(fields: [matchPostId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([matchPostId, joinStatus])
+  @@index([userId, joinStatus])
+  @@map("match_post_participants")
+}
+
+// ─────────────────────────────────────────
+// DOMAIN: NOTIFICATIONS
+// ─────────────────────────────────────────
+
+model Notification {
+  id          String           @id @default(uuid())
+  recipientId String           @map("recipient_id")
+  actorId     String?          @map("actor_id")
+  entityType  String           @map("entity_type") @db.VarChar(50)
+  entityId    String           @map("entity_id") @db.Uuid
+  type        NotificationType
+  title       String           @db.VarChar(255)
+  content     String?          @db.Text
+  isRead      Boolean          @default(false) @map("is_read")
+  readAt      DateTime?        @map("read_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  deletedAt   DateTime?        @map("deleted_at")
+
+  recipient User  @relation("NotificationRecipient", fields: [recipientId], references: [id])
+  actor     User? @relation("NotificationActor", fields: [actorId], references: [id])
+
+  @@index([recipientId, isRead, createdAt(sort: Desc)])
+  @@index([entityType, entityId])
+  @@map("notifications")
+}
+
+// ─────────────────────────────────────────
+// DOMAIN: CHAT & AI
+// ─────────────────────────────────────────
+
+model Conversation {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  title     String?   @db.VarChar(255)
+  metadata  Json?     @db.JsonB
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  user     User      @relation(fields: [userId], references: [id])
+  messages Message[]
+
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("conversations")
+}
+
+model Message {
+  id             String      @id @default(uuid())
+  conversationId String      @map("conversation_id")
+  role           MessageRole
+  content        String      @db.Text
+  tokensUsed     Int?        @map("tokens_used")
+  embeddingId    String?     @map("embedding_id") @db.VarChar(255)
+  metadata       Json?       @db.JsonB
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt
+  deletedAt      DateTime?   @map("deleted_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
