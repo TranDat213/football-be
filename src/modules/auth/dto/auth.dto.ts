@@ -1,39 +1,89 @@
-import { IsEmail, IsOptional, IsString, MinLength } from "class-validator";
+import { UserRole } from '@prisma/client';
+import {
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 export class SignInDto {
-    @IsString()
-    user_name!: string;
+  @IsString()
+  @IsOptional()
+  user_name?: string;
 
-    @IsString()
-    @IsEmail()
-    @IsOptional()
-    email?: string;
+  @IsString()
+  @IsEmail()
+  @IsOptional()
+  email?: string;
 
-    @IsString()
-    @MinLength(8, { message: 'Password must be at least 8 characters long' })
-    password!: string;
+  @IsString()
+  @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  password!: string;
 }
 
 export class SignUpDto {
-    @IsString()
-    first_name!: string;
+  @IsString()
+  first_name!: string;
 
-    @IsString()
-    last_name!: string;
+  @IsString()
+  last_name!: string;
 
-    @IsString()
-    user_name!: string;
+  @IsString()
+  user_name!: string;
 
-    @IsString()
-    @IsEmail()
-    email!: string;
+  @IsString()
+  @IsOptional()
+  phone?: string;
 
-    @IsString()
-    @MinLength(8, { message: 'Password must be at least 8 characters long' })
-    password!: string;
+  @IsString()
+  @IsOptional()
+  @IsEnum(UserRole)
+  role?: UserRole;
 
-    @IsString()
-    @MinLength(8, { message: 'Confirm password must be at least 8 characters long' })
-    confirmPassword!: string;
+  @IsString()
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  password!: string;
+
+  @IsString()
+  @MinLength(8, {
+    message: 'Confirm password must be at least 8 characters long',
+  })
+  confirmPassword!: string;
 }
 
+export class ForgotPasswordDto {
+  @IsString()
+  @IsOptional()
+  user_name?: string;
+
+  @IsString()
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
+  @IsString()
+  @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  password!: string;
+
+  @IsString()
+  @MinLength(8, {
+    message: 'Confirm password must be at least 8 characters long',
+  })
+  confirmPassword!: string;
+}
+export class OAuthDto {
+  @IsString()
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  provider!: string;
+
+  @IsString()
+  providerId!: string;
+}
