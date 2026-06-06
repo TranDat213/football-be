@@ -127,6 +127,12 @@ enum NotificationType {
   SYSTEM
 }
 
+enum OwnerRegistrationStatus {
+  PENDING
+  CONTACTING
+  APPROVED
+  REJECTED
+}
 // ─────────────────────────────────────────
 // DOMAIN: USERS
 // ─────────────────────────────────────────
@@ -159,6 +165,7 @@ model User {
   sentNotifications     Notification[]         @relation("NotificationActor")
   receivedNotifications Notification[]         @relation("NotificationRecipient")
   conversations         Conversation[]
+  ownerRegistration     OwnerRegistration[]
 
   @@index([role, status])
   @@index([deletedAt])
@@ -507,4 +514,24 @@ model Message {
 
   @@index([conversationId, createdAt])
   @@map("messages")
+}
+
+model OwnerRegistration {
+  id        String @id @default(uuid())
+
+  userId    String?
+  user      User? @relation(fields: [userId], references: [id])
+
+  fullName  String
+  email     String
+  phone     String
+
+  stadiumName String?
+  address     String?
+
+  status OwnerRegistrationStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime? @map("deleted_at")
 }

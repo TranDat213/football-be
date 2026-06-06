@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import {
   ForgotPasswordDto,
   OAuthDto,
+  OwnerRegisterDto,
   SignInDto,
   SignUpDto,
 } from '../dto/auth.dto';
@@ -38,7 +39,7 @@ export class AuthController {
       res,
       userId: userId!,
     });
-    return res.status(200).json({
+    return res.status(201).json({
       message: 'Sign up successfully',
       data: {
         accessToken,
@@ -47,7 +48,8 @@ export class AuthController {
       },
     });
   }
-  async logout(req: Request, res: Response) {
+
+  async logout(_req: Request, res: Response) {
     return clearAuthCookie(res).status(HTTPSTATUS.OK).json({
       message: 'User logged out successfully',
     });
@@ -77,6 +79,17 @@ export class AuthController {
         accessToken,
         refreshToken,
         user,
+      },
+    });
+  }
+
+  async createOwnerRegister(req: Request, res: Response, _next: NextFunction) {
+    const dto = req.body as OwnerRegisterDto;
+    const ownerRegistration = await this.authService.createOwnerRegister(dto);
+    return res.status(201).json({
+      message: 'Create owner registration successfully',
+      data: {
+        ownerRegistration,
       },
     });
   }

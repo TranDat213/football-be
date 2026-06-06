@@ -4,6 +4,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  Matches,
   MinLength,
 } from 'class-validator';
 
@@ -86,4 +87,30 @@ export class OAuthDto {
 
   @IsString()
   providerId!: string;
+}
+
+export class OwnerRegisterDto{
+  @IsString()
+  @IsOptional()
+  user_id?:string;
+
+  @IsString()
+  full_name!:string;
+
+  @IsEmail()
+  @IsString()
+  email!:string;
+
+  @IsString()
+  @Matches(/^(0|\+84)[3-9][0-9]{8}$/, {
+  message: 'Phone number is invalid',
+})
+  phone!:string;
+
+  @IsString()
+  stadium_name!:string;
+
+  @IsString()
+  address!:string;
+
 }

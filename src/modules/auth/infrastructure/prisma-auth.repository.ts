@@ -1,6 +1,6 @@
 import { IAuthRepository } from '../domain/auth.repository';
-import { OAuthDto, SignUpDto } from '../dto/auth.dto';
-import { PrismaClient, User } from '@prisma/client';
+import { OAuthDto, OwnerRegisterDto, SignUpDto } from '../dto/auth.dto';
+import { OwnerRegistration, PrismaClient, User } from '@prisma/client';
 
 export class PrismaAuthRepository implements IAuthRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -11,8 +11,6 @@ export class PrismaAuthRepository implements IAuthRepository {
         lastName: data.last_name,
         username: data.user_name,
         email: data.email,
-        role: data.role,
-        phone: data.phone,
         password: data.password,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -74,4 +72,24 @@ export class PrismaAuthRepository implements IAuthRepository {
       },
     });
   }
+
+  async createOwnerRegister(data: OwnerRegisterDto): Promise<OwnerRegistration> {
+    return await this.prisma.ownerRegistration.create({
+      data:{
+        userId:data.user_id,  
+        fullName: data.full_name,
+        email: data.email,
+        phone: data.phone,
+        stadiumName: data.stadium_name,
+        address: data.address,
+      },
+    });
+  }
+
+  async findUserById(userId: string): Promise<User | null> {
+    return await this.prisma.user.findUnique({
+      where:{id: userId},
+    });
+  }
 }
+

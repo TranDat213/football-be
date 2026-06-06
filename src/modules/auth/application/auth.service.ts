@@ -1,9 +1,10 @@
-import { User, UserRole } from '@prisma/client';
+import { OwnerRegistration, User, UserRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { IAuthRepository } from '../domain/auth.repository';
 import {
   ForgotPasswordDto,
   OAuthDto,
+  OwnerRegisterDto,
   SignInDto,
   SignUpDto,
 } from '../dto/auth.dto';
@@ -23,8 +24,6 @@ export class AuthService {
         first_name,
         last_name,
         user_name,
-        phone,
-        role,
         email,
         password,
         confirmPassword,
@@ -47,21 +46,11 @@ export class AuthService {
         throw new BadRequestException('Passwords do not match');
       }
 
-      if (data.role !== UserRole.USER) {
-        if (!data.phone) {
-          throw new BadRequestException(
-            'Phone number is required for owner and admin',
-          );
-        }
-      }
-
       const hashedPassword = await bcrypt.hash(password, 10);
       return await this.authRepository.createUser({
         first_name,
         last_name,
         user_name,
-        phone,
-        role,
         email,
         password: hashedPassword,
         confirmPassword,
@@ -157,6 +146,38 @@ export class AuthService {
         throw error;
       }
       throw new InternalServerException('Failed to forgot password');
+    }
+  }
+
+  async createOwnerRegister(
+    data: OwnerRegisterDto,
+  ): Promise<OwnerRegistration> {
+    try {
+      // Validate email is provided
+      if (!data.email) {
+        throw new BadRequestException('Email is required');
+      }
+
+      // Check if email already exists
+      const existingUser = await this.authRepository.findUserByEmail(
+        data.email,
+      );
+      if (data.user_id) {
+        const user = await this.authRepository.findUserById(data.user_id);
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        if (user.role === UserRole.OWNER) {
+          throw new BadRequestException('You are already an owner.');
+        }
+      }
+      return await this.authRepository.createOwnerRegister(data);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerException('Failed to register owner');
     }
   }
 }
