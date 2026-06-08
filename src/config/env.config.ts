@@ -9,4 +9,5 @@ export const Env = {
     NODE_ENV: getEnv('NODE_ENV', 'development'),
     COOKIE_MAX_AGE: getEnv('COOKIE_MAX_AGE', '7d'),
     COOKIE_REFRESH_MAX_AGE: getEnv('COOKIE_REFRESH_MAX_AGE', '30d'),
+    MAX_SLUG_LENGTH: parseInt(getEnv('MAX_SLUG_LENGTH')),
 } as const;
