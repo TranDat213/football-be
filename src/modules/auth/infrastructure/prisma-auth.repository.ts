@@ -1,9 +1,9 @@
 import { IAuthRepository } from '../domain/auth.repository';
-import { OAuthDto, OwnerRegisterDto, SignUpDto } from '../dto/auth.dto';
-import { OwnerRegistration, PrismaClient, User } from '@prisma/client';
+import { AddOwnerDto, OAuthDto, OwnerRegisterDto, SignUpDto, UpdateRoleDto } from '../dto/auth.dto';
+import { OwnerRegistration, PrismaClient, User, UserRole } from '@prisma/client';
 
 export class PrismaAuthRepository implements IAuthRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaClient) { }
   async createUser(data: SignUpDto): Promise<User> {
     return await this.prisma.user.create({
       data: {
@@ -12,6 +12,7 @@ export class PrismaAuthRepository implements IAuthRepository {
         username: data.user_name,
         email: data.email,
         password: data.password,
+        role: data.role || UserRole.USER,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -75,9 +76,10 @@ export class PrismaAuthRepository implements IAuthRepository {
 
   async createOwnerRegister(data: OwnerRegisterDto): Promise<OwnerRegistration> {
     return await this.prisma.ownerRegistration.create({
-      data:{
-        userId:data.user_id,  
-        fullName: data.full_name,
+      data: {
+        userId: data.user_id,
+        firstName: data.first_name,
+        lastName: data.last_name,
         email: data.email,
         phone: data.phone,
         stadiumName: data.stadium_name,
@@ -88,7 +90,33 @@ export class PrismaAuthRepository implements IAuthRepository {
 
   async findUserById(userId: string): Promise<User | null> {
     return await this.prisma.user.findUnique({
-      where:{id: userId},
+      where: { id: userId },
+    });
+  }
+
+  async createOwner(data: AddOwnerDto): Promise<User> {
+    return await this.prisma.user.create({
+      data: {
+        firstName: data.first_name,
+        lastName: data.last_name,
+        username: data.email,
+        email: data.email,
+        phone: data.phone,
+        role: UserRole.OWNER,
+        password: data.password || "12345678",
+      }
+    })
+  }
+
+  async updateRole(data: UpdateRoleDto, user_id: string): Promise<User> {
+    return await this.prisma.user.update({
+      where: {
+        id: user_id,
+      },
+      data: {
+        role: data.role,
+        updatedAt: new Date(),
+      },
     });
   }
 }

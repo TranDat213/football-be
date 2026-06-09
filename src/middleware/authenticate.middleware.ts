@@ -7,7 +7,7 @@ import prisma from '@/lib/prisma';
 
 const authRepository = new PrismaAuthRepository(prisma);
 
-export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
+export const authenticate = async (req: Request, _res: Response, next: NextFunction) => {
   try {
     const token = req.cookies.accessToken || req.headers.authorization?.split(' ')[1];
 

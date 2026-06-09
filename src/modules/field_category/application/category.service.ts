@@ -15,7 +15,7 @@ export class CategoryService {
         if (!slug) {
         throw new BadRequestException('Category name is invalid to generate slug');
       }
-        return await this.categoryRepository.create(category);
+        return await this.categoryRepository.create(category,slug);
     }
     async update(categoryId: string, category: UpdateCategoryDto): Promise<FieldCategory> {
         const slug = normalizeSlug(category.name, Env.MAX_SLUG_LENGTH);
@@ -26,7 +26,7 @@ export class CategoryService {
       if (!existingCategory) {
         throw new BadRequestException('Category not found');
       }
-        return await this.categoryRepository.update(categoryId, category);
+        return await this.categoryRepository.update(categoryId, category,slug);
     }
     async delete(id: string): Promise<FieldCategory> {
         return await this.categoryRepository.delete(id);
