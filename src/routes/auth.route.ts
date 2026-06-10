@@ -48,9 +48,25 @@ authRouter.post(
   asyncHandler(authController.createOwnerRegister.bind(authController)),
 );
 
-authRouter.post('/oauth',validateDto(OwnerRegisterDto), asyncHandler(authController.OAuthUser.bind(authController)));
+authRouter.post(
+  '/oauth',
+  validateDto(OwnerRegisterDto),
+  asyncHandler(authController.OAuthUser.bind(authController)),
+);
 
-authRouter.post('/create-owner',authenticate,authorize(UserRole.ADMIN),validateDto(AddOwnerDto),asyncHandler(authController.createOwner.bind(authController)))
+authRouter.post(
+  '/create-owner',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  validateDto(AddOwnerDto),
+  asyncHandler(authController.createOwner.bind(authController)),
+);
 
-authRouter.patch('/update-role/:id',authenticate,authorize(UserRole.ADMIN),validateDto(UpdateRoleDto),asyncHandler(authController.updateRole.bind(authController)))
+authRouter.patch(
+  '/update-role/:id',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  validateDto(UpdateRoleDto),
+  asyncHandler(authController.updateRole.bind(authController)),
+);
 export default authRouter;

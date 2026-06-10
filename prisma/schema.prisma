@@ -116,6 +116,12 @@ enum MessageRole {
   SYSTEM
 }
 
+enum YardType {
+  FIVE_A_SIDE
+  SEVEN_A_SIDE
+  ELEVEN_A_SIDE
+}
+
 enum NotificationType {
   BOOKING_CONFIRMED
   BOOKING_CANCELLED
@@ -229,7 +235,7 @@ model FieldYard {
   footballFieldId String     @map("football_field_id")
   name            String     @db.VarChar(100)
   code            String     @db.VarChar(20)
-  type            String     @db.VarChar(50)
+  type            YardType   @default(FIVE_A_SIDE)
   status          YardStatus @default(ACTIVE)
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
