@@ -12,7 +12,7 @@ export interface IFieldRepository {
     data: FieldDto,
     slug: string,
   ): Promise<FootballField>;
-  findByOwnerId(ownerId: string): Promise<FootballField[]>;
+  findByOwnerId(page:number, limit:number, ownerId: string): Promise<FootballField[]>;
   findOwner(ownerId: string): Promise<User | null>;
   findCategoryById(categoryId: string): Promise<FieldCategory | null>;
   updateField(

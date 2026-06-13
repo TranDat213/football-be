@@ -57,7 +57,9 @@ export class FieldController {
 
   async getFieldByOwnerId(req: Request, res: Response, _next: NextFunction) {
     const ownerId = req.user?.id as string;
-    const fields = await this.fieldService.findByOwnerId(ownerId);
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const fields = await this.fieldService.findByOwnerId(page, limit, ownerId);
     return res
       .status(200)
       .json({ message: 'Fields found successfully', data: fields });

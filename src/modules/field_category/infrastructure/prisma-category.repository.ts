@@ -43,10 +43,12 @@ export class PrismaCategoryRepository implements ICategoryRepository {
       where: { id: id },
     });
   }
-  async findAll(): Promise<FieldCategory[]> {
+  async findAll(page:number, limit:number): Promise<FieldCategory[]> {
     return await this.prisma.fieldCategory.findMany({
       where: { deletedAt: null },
       orderBy: { displayOrder: 'asc' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
   }
 }

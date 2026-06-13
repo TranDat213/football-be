@@ -10,5 +10,5 @@ export interface ICategoryRepository {
   ): Promise<FieldCategory>;
   delete(id: string): Promise<FieldCategory>;
   findById(id: string): Promise<FieldCategory | null>;
-  findAll(): Promise<FieldCategory[]>;
+  findAll(page:number, limit:number): Promise<FieldCategory[]>;
 }

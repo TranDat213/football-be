@@ -42,9 +42,12 @@ export class PrismaFieldRepository implements IFieldRepository {
     });
   }
 
-  async findByOwnerId(ownerId: string): Promise<FootballField[]> {
+  async findByOwnerId(page:number, limit:number, ownerId: string): Promise<FootballField[]> {
     return await this.prisma.footballField.findMany({
       where: { ownerId: ownerId, deletedAt: null },
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
     });
   }
   async findOwner(ownerId: string): Promise<User | null> {

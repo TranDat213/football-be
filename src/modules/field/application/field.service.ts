@@ -85,7 +85,7 @@ export class FieldService {
     return await this.fieldRepository.updateFieldStatus(fieldId, status);
   }
 
-  async findByOwnerId(ownerId: string): Promise<FootballField[]> {
+  async findByOwnerId(page:number, limit:number, ownerId: string): Promise<FootballField[]> {
     const user = await this.fieldRepository.findOwner(ownerId);
     if (!user) {
       throw new BadRequestException('User not found');
@@ -93,6 +93,6 @@ export class FieldService {
     if (user.role !== UserRole.OWNER) {
       throw new BadRequestException('User is not owner');
     }
-    return await this.fieldRepository.findByOwnerId(ownerId);
+    return await this.fieldRepository.findByOwnerId(page, limit, ownerId);
   }
 }

@@ -1,10 +1,8 @@
 import slugify from 'slugify';
 
-const DEFAULT_MAX_SLUG_LENGTH = 120;
-
 export const normalizeSlug = (
   value: string,
-  maxLength: number = DEFAULT_MAX_SLUG_LENGTH,
+  maxLength: number = Number(process.env.MAX_SLUG_LENGTH) || 60,
 ): string => {
   const normalized = slugify(value, {
     lower: true,
