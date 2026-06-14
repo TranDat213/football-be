@@ -5,6 +5,8 @@ import { BadRequestException } from '@/utils/app-error';
 
 export const validateDto = (dtoClass: any, type: 'body' | 'query' | 'params' = 'body') => {
   return async (req: Request, _res: Response, next: NextFunction) => {
+    console.log('dtoClass:', dtoClass);
+    console.log('req.body:', req.body);
     const dto = plainToInstance(dtoClass, req[type]);
     const errors = await validate(dto, {
       whitelist: true,

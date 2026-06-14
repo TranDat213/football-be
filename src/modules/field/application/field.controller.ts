@@ -1,10 +1,13 @@
 import { NextFunction, Request, Response } from 'express';
 import { FieldService } from './field.service';
 import {
+  CreateFieldImageDto,
   FieldDto,
   UpdateFieldDto,
+  UpdateFieldImageDto,
   UpdateFieldStatusDto,
 } from '../dto/field.dto';
+import 'multer';
 
 export class FieldController {
   constructor(private readonly fieldService: FieldService) {}
@@ -63,5 +66,51 @@ export class FieldController {
     return res
       .status(200)
       .json({ message: 'Fields found successfully', data: fields });
+  }
+
+  async createFieldImage(req: Request, res: Response, _next: NextFunction) {
+    const data = req.body as CreateFieldImageDto;
+    const ownerId = req.user?.id as string;
+     const imageFile = req.file as Express.Multer.File;
+    const fieldImage = await this.fieldService.createFieldImage(data, ownerId, imageFile);
+    return res
+      .status(201)
+      .json({ message: 'Field image created successfully', data: fieldImage });
+  }
+
+  async updateFieldImage(req: Request, res: Response, _next: NextFunction) {
+    const fieldImageId = req.params.id as string;
+    const data = req.body as UpdateFieldImageDto;
+    const imageFile = req.file as Express.Multer.File;
+    const fieldImage = await this.fieldService.updateFieldImage(fieldImageId, data, imageFile);
+    return res
+      .status(200)
+      .json({ message: 'Field image updated successfully', data: fieldImage });
+  }
+
+  async deleteFieldImage(req: Request, res: Response, _next: NextFunction) {
+    const fieldImageId = req.params.id as string;
+    const fieldImage = await this.fieldService.deleteFieldImage(fieldImageId);
+    return res
+      .status(200)
+      .json({ message: 'Field image deleted successfully', data: fieldImage });
+  }
+
+  async findFieldImageById(req: Request, res: Response, _next: NextFunction) {
+    const fieldImageId = req.params.id as string;
+    const fieldImage = await this.fieldService.findFieldImageById(fieldImageId);
+    return res
+      .status(200)
+      .json({ message: 'Field image found successfully', data: fieldImage });
+  }
+
+  async findFieldImagesByFieldId(req: Request, res: Response, _next: NextFunction) {
+    const fieldId = req.params.id as string;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const fieldImages = await this.fieldService.findFieldImagesByFieldId(page,limit,fieldId);
+    return res
+      .status(200)
+      .json({ message: 'Field images found successfully', data: fieldImages });
   }
 }

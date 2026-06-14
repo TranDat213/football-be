@@ -1,10 +1,11 @@
 import {
   FieldCategory,
+  FieldImage,
   FieldStatus,
   FootballField,
   User,
 } from '@prisma/client';
-import { FieldDto, UpdateFieldDto } from '../dto/field.dto';
+import { CreateFieldImageDto, FieldDto, UpdateFieldDto, UpdateFieldImageDto } from '../dto/field.dto';
 
 export interface IFieldRepository {
   createField(
@@ -27,4 +28,11 @@ export interface IFieldRepository {
     fieldId: string,
     status: FieldStatus,
   ): Promise<FootballField>;
+
+  createFieldImage(data: CreateFieldImageDto,imageUrl:string,imagePublicId:string): Promise<FieldImage>;
+  updateFieldImage(fieldImageId: string, data: UpdateFieldImageDto,imageUrl:string,imagePublicId:string ): Promise<FieldImage>;
+  deleteFieldImage(fieldImageId: string): Promise<FieldImage>;
+  findFieldImageById(fieldImageId: string): Promise<FieldImage | null>;
+  findFieldImagesByFieldId(page:number,limit:number,fieldId: string): Promise<FieldImage[]>;
+  findFieldByOwnerId(ownerId: string): Promise<FootballField | null >;
 }

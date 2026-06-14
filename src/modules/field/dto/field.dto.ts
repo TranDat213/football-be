@@ -1,5 +1,8 @@
+import 'reflect-metadata';
 import { FieldStatus } from '@prisma/client';
+import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsEnum,
   IsIn,
   IsInt,
@@ -95,4 +98,30 @@ export class UpdateFieldStatusDto {
   @IsString()
   @IsEnum(FieldStatus)
   status!: FieldStatus;
+}
+
+export class CreateFieldImageDto {
+  @IsString()
+  footballFieldId!: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  sortOrder!: number;
+
+  @Type(() => Boolean)
+  @IsBoolean()
+  isCover!: boolean;
+}
+
+export class UpdateFieldImageDto {
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  sortOrder?: number;
+
+  @Type(() => Boolean)
+  @IsBoolean()
+  @IsOptional()
+  isCover?: boolean;
 }

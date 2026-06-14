@@ -1,12 +1,13 @@
 import { IFieldRepository } from '../domain/field.repository';
 import {
   FieldCategory,
+  FieldImage,
   FieldStatus,
   FootballField,
   PrismaClient,
   User,
 } from '@prisma/client';
-import { FieldDto, UpdateFieldDto } from '../dto/field.dto';
+import { CreateFieldImageDto, FieldDto, UpdateFieldDto, UpdateFieldImageDto } from '../dto/field.dto';
 
 export class PrismaFieldRepository implements IFieldRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -116,6 +117,66 @@ export class PrismaFieldRepository implements IFieldRepository {
       data: {
         status: status,
         updatedAt: new Date(),
+      },
+    });
+  }
+
+  async createFieldImage(data: CreateFieldImageDto,imageUrl:string,imagePublicId:string): Promise<FieldImage> {
+    return await this.prisma.fieldImage.create({
+      data: {
+        footballFieldId: data.footballFieldId,
+        url: imageUrl,
+        publicId: imagePublicId,
+        sortOrder: data.sortOrder,
+        isCover: data.isCover,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async updateFieldImage(fieldImageId: string, data: UpdateFieldImageDto,imageUrl:string,imagePublicId:string): Promise<FieldImage> {
+    return await this.prisma.fieldImage.update({
+      where: { id: fieldImageId },
+      data: {
+        url: imageUrl,
+        publicId: imagePublicId,
+        sortOrder: data.sortOrder,
+        isCover: data.isCover,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async deleteFieldImage(fieldImageId: string): Promise<FieldImage> {
+    return await this.prisma.fieldImage.update({
+      where: { id: fieldImageId },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+  }
+
+  async findFieldImageById(fieldImageId: string): Promise<FieldImage | null> {
+    return await this.prisma.fieldImage.findUnique({
+      where: { id: fieldImageId },
+    });
+  }
+
+  async findFieldImagesByFieldId(page:number,limit:number,fieldId: string): Promise<FieldImage[]> {
+    return await this.prisma.fieldImage.findMany({
+      where: { footballFieldId: fieldId, deletedAt: null },
+      orderBy: { sortOrder: 'asc' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+  }
+
+  async findFieldByOwnerId(ownerId: string): Promise<FootballField | null> {
+    return await this.prisma.footballField.findFirst({
+      where: {
+        ownerId: ownerId,
+        deletedAt: null,
       },
     });
   }
