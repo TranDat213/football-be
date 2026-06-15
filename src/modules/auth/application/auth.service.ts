@@ -54,7 +54,6 @@ export class AuthService {
         last_name,
         user_name,
         email,
-        role: data.role,
         password: hashedPassword,
         confirmPassword,
       });
@@ -198,6 +197,12 @@ export class AuthService {
           throw new BadRequestException('Username already exists');
         }
       }
+      if (data.phone) {
+        const user = await this.authRepository.findUserByPhone(data.phone);
+        if (user) {
+          throw new BadRequestException('Phone already exists');
+        }
+      }
 
       const hashedPassword = await bcrypt.hash(data.password || "12345678", 10);
       return await this.authRepository.createOwner({
@@ -209,6 +214,7 @@ export class AuthService {
       });
     }
     catch(error){
+        console.error(error);
       if (error instanceof BadRequestException) {
         throw error;
       }

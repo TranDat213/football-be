@@ -1,4 +1,4 @@
-import { UserRole } from '@prisma/client';
+import { ProviderType, UserRole } from '@prisma/client';
 import {
   IsEmail,
   IsEnum,
@@ -36,11 +36,6 @@ export class SignUpDto {
   @IsString()
   @IsOptional()
   phone?: string;
-
-  @IsString()
-  @IsOptional()
-  @IsEnum(UserRole)
-  role?: UserRole;
 
   @IsString()
   @IsEmail()
@@ -83,7 +78,8 @@ export class OAuthDto {
   email!: string;
 
   @IsString()
-  provider!: string;
+  @IsEnum(ProviderType)
+  provider!: ProviderType;
 
   @IsString()
   providerId!: string;

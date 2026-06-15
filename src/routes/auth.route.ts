@@ -8,6 +8,7 @@ import { AuthService } from '@/modules/auth/application/auth.service';
 import {
   AddOwnerDto,
   ForgotPasswordDto,
+  OAuthDto,
   OwnerRegisterDto,
   SignInDto,
   SignUpDto,
@@ -50,7 +51,7 @@ authRouter.post(
 
 authRouter.post(
   '/oauth',
-  validateDto(OwnerRegisterDto),
+  validateDto(OAuthDto),
   asyncHandler(authController.OAuthUser.bind(authController)),
 );
 

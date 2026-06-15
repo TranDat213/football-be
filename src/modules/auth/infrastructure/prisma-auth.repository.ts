@@ -12,7 +12,7 @@ export class PrismaAuthRepository implements IAuthRepository {
         username: data.user_name,
         email: data.email,
         password: data.password,
-        role: data.role || UserRole.USER,
+        role: UserRole.USER,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -31,6 +31,14 @@ export class PrismaAuthRepository implements IAuthRepository {
     return await this.prisma.user.findUnique({
       where: {
         username: username,
+      },
+    });
+  }
+
+  async findUserByPhone(phone: string): Promise<User | null> {
+    return await this.prisma.user.findUnique({
+      where: {
+        phone: phone,
       },
     });
   }

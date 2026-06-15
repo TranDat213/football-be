@@ -139,6 +139,12 @@ enum OwnerRegistrationStatus {
   APPROVED
   REJECTED
 }
+
+enum ProviderType {
+  LOCAL
+  GOOGLE
+  FACEBOOK
+}
 // ─────────────────────────────────────────
 // DOMAIN: USERS
 // ─────────────────────────────────────────
@@ -154,7 +160,7 @@ model User {
   avatarUrl       String?    @map("avatar_url") @db.Text
   role            UserRole   @default(USER)
   status          UserStatus @default(ACTIVE)
-  provider        String     @default("LOCAL") @db.VarChar(20)
+  provider        ProviderType?     @default(LOCAL)
   providerId      String?    @map("provider_id") @db.VarChar(255)
   lastLoginAt     DateTime?  @map("last_login_at")
   createdAt       DateTime   @default(now()) @map("created_at")
