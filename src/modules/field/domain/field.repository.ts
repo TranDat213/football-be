@@ -30,7 +30,7 @@ export interface IFieldRepository {
   ): Promise<FootballField>;
 
   createFieldImage(data: CreateFieldImageDto,imageUrl:string,imagePublicId:string): Promise<FieldImage>;
-  updateFieldImage(fieldImageId: string, data: UpdateFieldImageDto,imageUrl:string,imagePublicId:string ): Promise<FieldImage>;
+  updateFieldImage(fieldImageId: string, data: UpdateFieldImageDto,imageUrl:string | null,imagePublicId:string | null ): Promise<FieldImage>;
   deleteFieldImage(fieldImageId: string): Promise<FieldImage>;
   findFieldImageById(fieldImageId: string): Promise<FieldImage | null>;
   findFieldImagesByFieldId(page:number,limit:number,fieldId: string): Promise<FieldImage[]>;

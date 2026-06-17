@@ -158,6 +158,7 @@ model User {
   password        String?    @db.Text
   phone           String?    @unique @db.VarChar(20)
   avatarUrl       String?    @map("avatar_url") @db.Text
+  avatarPublicId  String?    @map("avatar_public_id") @db.VarChar(255)
   role            UserRole   @default(USER)
   status          UserStatus @default(ACTIVE)
   provider        ProviderType?     @default(LOCAL)
