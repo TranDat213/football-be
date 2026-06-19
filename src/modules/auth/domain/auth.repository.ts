@@ -7,6 +7,12 @@ import {
 } from '../dto/auth.dto';
 import { User, OwnerRegistration, UserRole } from '@prisma/client';
 
+export interface OtpData {
+    otpHash: string;
+    expiresAt: number;
+    attempts: number;
+    lastSentAt: number;
+}
 export interface IAuthRepository {
   createUser(data: SignUpDto): Promise<User>;
   findUserByEmail(email: string): Promise<User | null>;

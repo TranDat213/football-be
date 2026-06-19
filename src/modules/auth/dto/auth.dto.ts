@@ -1,5 +1,6 @@
 import { ProviderType, UserRole } from '@prisma/client';
 import {
+  IsBoolean,
   IsEmail,
   IsEnum,
   IsOptional,
@@ -142,4 +143,13 @@ export class UpdateRoleDto {
   @IsString()
   @IsEnum(UserRole)
   role!: UserRole;
+}
+
+export class VerifyOtpDto{
+  @IsString()
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  otp!: string;
 }

@@ -8,6 +8,7 @@ import {
   SignInDto,
   SignUpDto,
   UpdateRoleDto,
+  VerifyOtpDto,
 } from '../dto/auth.dto';
 import { clearAuthCookie, setJwtAuthCookie } from '@/utils/cookie';
 import { HTTPSTATUS } from '@/config/http.config';
@@ -36,16 +37,9 @@ export class AuthController {
   async signUp(req: Request, res: Response, _next: NextFunction) {
     const dto = req.body as SignUpDto;
     const user = await this.authService.signUp(dto);
-    const userId = user?.id.toString();
-    const { accessToken, refreshToken } = setJwtAuthCookie({
-      res,
-      userId: userId!,
-    });
     return res.status(201).json({
       message: 'Sign up successfully',
       data: {
-        accessToken,
-        refreshToken,
         user,
       },
     });
@@ -116,6 +110,37 @@ export class AuthController {
       data: {
         user,
       },
+    });
+  }
+
+  async refreshToken(req: Request, res: Response, _next: NextFunction) {
+    const user_id = req.user?.id;
+    const { accessToken, refreshToken } = setJwtAuthCookie({
+      res,
+      userId: user_id!,
+    });
+    return res.status(200).json({
+      message: 'Refresh token successfully',
+      data: {
+        accessToken,
+        refreshToken,
+      },
+    });
+  }
+
+  async requestOtp(req: Request, res: Response, _next: NextFunction) {
+    const email = req.body.email as string;
+    await this.authService.requestOtp(email);
+    return res.status(200).json({
+      message: 'OTP sent successfully',
+    });
+  }
+
+  async verifyOtp(req: Request, res: Response, _next: NextFunction) {
+    const dto = req.body as VerifyOtpDto;
+    await this.authService.veriFyOtp(dto);
+    return res.status(200).json({
+      message: 'OTP verified successfully',
     });
   }
 }

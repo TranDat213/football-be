@@ -13,6 +13,7 @@ import {
   SignInDto,
   SignUpDto,
   UpdateRoleDto,
+  VerifyOtpDto,
 } from '@/modules/auth/dto/auth.dto';
 import { PrismaAuthRepository } from '@/modules/auth/infrastructure/prisma-auth.repository';
 import { UserRole } from '@prisma/client';
@@ -23,6 +24,11 @@ const authRepository = new PrismaAuthRepository(prisma);
 const authService = new AuthService(authRepository);
 const authController = new AuthController(authService);
 
+authRouter.post(
+  '/refresh',
+  authenticate,
+  asyncHandler(authController.refreshToken.bind(authController)),
+);
 authRouter.post(
   '/sign-in',
   validateDto(SignInDto),
@@ -69,5 +75,16 @@ authRouter.patch(
   authorize(UserRole.ADMIN),
   validateDto(UpdateRoleDto),
   asyncHandler(authController.updateRole.bind(authController)),
+);
+
+authRouter.post(
+  '/request-otp',
+  asyncHandler(authController.requestOtp.bind(authController)),
+);
+
+authRouter.post(
+  '/verify-otp',
+  validateDto(VerifyOtpDto),
+  asyncHandler(authController.verifyOtp.bind(authController)),
 );
 export default authRouter;

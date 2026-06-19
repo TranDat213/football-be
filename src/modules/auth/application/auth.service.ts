@@ -1,6 +1,6 @@
 import { OwnerRegistration, User, UserRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { IAuthRepository } from '../domain/auth.repository';
+import { IAuthRepository, OtpData } from '../domain/auth.repository';
 import {
   AddOwnerDto,
   ForgotPasswordDto,
@@ -9,6 +9,7 @@ import {
   SignInDto,
   SignUpDto,
   UpdateRoleDto,
+  VerifyOtpDto,
 } from '../dto/auth.dto';
 import {
   BadRequestException,
@@ -16,10 +17,13 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@/utils/app-error';
+import mailService from './mail.service';
+import * as crypto from 'node:crypto';
 
 export class AuthService {
   constructor(private readonly authRepository: IAuthRepository) {}
 
+  private otpStore = new Map<string, OtpData>();
   async signUp(data: SignUpDto): Promise<User> {
     try {
       const {
@@ -69,6 +73,9 @@ export class AuthService {
     try {
       if (!data.email && !data.user_name) {
         throw new BadRequestException('Email or username is required');
+      }
+      if (data.email && !data.user_name) {
+        data.user_name = data.email;
       }
       let user: User | null = null;
       if (data.email) {
@@ -183,8 +190,8 @@ export class AuthService {
     }
   }
 
-   async createOwner(data: AddOwnerDto): Promise<User> {
-    try{
+  async createOwner(data: AddOwnerDto): Promise<User> {
+    try {
       if (data.email) {
         const user = await this.authRepository.findUserByEmail(data.email);
         if (user) {
@@ -204,27 +211,26 @@ export class AuthService {
         }
       }
 
-      const hashedPassword = await bcrypt.hash(data.password || "12345678", 10);
+      const hashedPassword = await bcrypt.hash(data.password || '12345678', 10);
       return await this.authRepository.createOwner({
-        first_name:data.first_name,
-        last_name:data.last_name,
-        email:data.email,
-        phone:data.phone,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        phone: data.phone,
         password: hashedPassword,
       });
-    }
-    catch(error){
-        console.error(error);
+    } catch (error) {
+      console.error(error);
       if (error instanceof BadRequestException) {
         throw error;
       }
       throw new InternalServerException('Failed to create owner');
     }
-   }
+  }
 
-   async updateRole(data: UpdateRoleDto, user_id: string): Promise<User> {
-    try{
-      if(!user_id){
+  async updateRole(data: UpdateRoleDto, user_id: string): Promise<User> {
+    try {
+      if (!user_id) {
         throw new BadRequestException('User ID is required');
       }
       const user = await this.authRepository.findUserById(user_id);
@@ -232,12 +238,81 @@ export class AuthService {
         throw new NotFoundException('User not found');
       }
       return await this.authRepository.updateRole(data, user_id);
-    }
-    catch(error){
+    } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
       }
       throw new InternalServerException('Failed to update role');
     }
-   }
+  }
+  async requestOtp(email: string): Promise<void> {
+    try {
+      const user = await this.authRepository.findUserByEmail(email);
+
+      console.log('2. user:', user?.email);
+      if (!user) {
+        throw new NotFoundException('Email not found');
+      }
+      const otpData = this.otpStore.get(email);
+      if (otpData) {
+        const now = Date.now();
+
+        const cooldown = parseInt(process.env.OTP_COOLDOWN || '60000');
+
+        if (now - otpData.lastSentAt < cooldown) {
+          throw new BadRequestException(
+            'Please wait before requesting another OTP.',
+          );
+        }
+      }
+      const otp = crypto.randomInt(100000, 999999).toString();
+      const otpHash = await bcrypt.hash(otp, 10);
+      this.otpStore.set(email, {
+        otpHash,
+        expiresAt: Date.now() + parseInt(process.env.OTP_EXPIRES || '60000'),
+        attempts: 0,
+        lastSentAt: Date.now(),
+      });
+      await mailService.sendVerificationEmail(email, otp);
+      console.log('4. mail sent');
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      console.error(error);
+      throw new InternalServerException('Failed to send OTP');
+    }
+  }
+
+  async veriFyOtp(data: VerifyOtpDto): Promise<void> {
+    try {
+      const user = await this.authRepository.findUserByEmail(data.email);
+      if (!user) {
+        throw new NotFoundException('Email not found');
+      }
+      const otpData = this.otpStore.get(data.email);
+      if (!otpData) {
+        throw new BadRequestException('OTP is not found');
+      }
+      const isOtpValid = await bcrypt.compare(data.otp, otpData.otpHash);
+      if (!isOtpValid) {
+        otpData.attempts++;
+        if (otpData.attempts >= 5) {
+          this.otpStore.delete(data.email);
+          throw new BadRequestException('Too many attempts');
+        }
+        throw new BadRequestException('OTP is incorrect remaining attempts: ' + (5 - otpData.attempts));
+      }
+      if (otpData.expiresAt < Date.now()) {
+        this.otpStore.delete(data.email);
+        throw new BadRequestException('OTP is expired');
+      }
+      this.otpStore.delete(data.email);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerException('Failed to verify OTP');
+    }
+  }
 }
