@@ -32,7 +32,8 @@ export class SignUpDto {
   last_name!: string;
 
   @IsString()
-  user_name!: string;
+  @IsOptional()
+  user_name?: string;
 
   @IsString()
   @IsOptional()

@@ -9,7 +9,7 @@ export class PrismaAuthRepository implements IAuthRepository {
       data: {
         firstName: data.first_name,
         lastName: data.last_name,
-        username: data.user_name,
+        username: data.user_name || data.email,
         email: data.email,
         password: data.password,
         role: UserRole.USER,
