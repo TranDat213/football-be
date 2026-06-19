@@ -1,6 +1,6 @@
 import { IAuthRepository } from '../domain/auth.repository';
-import { AddOwnerDto, OAuthDto, OwnerRegisterDto, SignUpDto, UpdateRoleDto } from '../dto/auth.dto';
-import { OwnerRegistration, PrismaClient, User, UserRole } from '@prisma/client';
+import { OAuthDto, SignUpDto } from '../dto/auth.dto';
+import { PrismaClient, User, UserRole } from '@prisma/client';
 
 export class PrismaAuthRepository implements IAuthRepository {
   constructor(private readonly prisma: PrismaClient) { }
@@ -82,50 +82,12 @@ export class PrismaAuthRepository implements IAuthRepository {
     });
   }
 
-  async createOwnerRegister(data: OwnerRegisterDto): Promise<OwnerRegistration> {
-    return await this.prisma.ownerRegistration.create({
-      data: {
-        userId: data.user_id,
-        firstName: data.first_name,
-        lastName: data.last_name,
-        email: data.email,
-        phone: data.phone,
-        stadiumName: data.stadium_name,
-        address: data.address,
-      },
-    });
-  }
-
   async findUserById(userId: string): Promise<User | null> {
     return await this.prisma.user.findUnique({
       where: { id: userId },
     });
   }
 
-  async createOwner(data: AddOwnerDto): Promise<User> {
-    return await this.prisma.user.create({
-      data: {
-        firstName: data.first_name,
-        lastName: data.last_name,
-        username: data.email,
-        email: data.email,
-        phone: data.phone,
-        role: UserRole.OWNER,
-        password: data.password || "12345678",
-      }
-    })
-  }
-
-  async updateRole(data: UpdateRoleDto, user_id: string): Promise<User> {
-    return await this.prisma.user.update({
-      where: {
-        id: user_id,
-      },
-      data: {
-        role: data.role,
-        updatedAt: new Date(),
-      },
-    });
-  }
+  
 }
 

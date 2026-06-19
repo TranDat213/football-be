@@ -1,13 +1,10 @@
 import { NextFunction, Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import {
-  AddOwnerDto,
   ForgotPasswordDto,
   OAuthDto,
-  OwnerRegisterDto,
   SignInDto,
   SignUpDto,
-  UpdateRoleDto,
   VerifyOtpDto,
 } from '../dto/auth.dto';
 import { clearAuthCookie, setJwtAuthCookie } from '@/utils/cookie';
@@ -74,40 +71,6 @@ export class AuthController {
       data: {
         accessToken,
         refreshToken,
-        user,
-      },
-    });
-  }
-
-  async createOwnerRegister(req: Request, res: Response, _next: NextFunction) {
-    const dto = req.body as OwnerRegisterDto;
-    const ownerRegistration = await this.authService.createOwnerRegister(dto);
-    return res.status(201).json({
-      message: 'Create owner registration successfully',
-      data: {
-        ownerRegistration,
-      },
-    });
-  }
-
-  async createOwner(req: Request, res: Response, _next: NextFunction) {
-    const dto = req.body as AddOwnerDto;
-    const user = await this.authService.createOwner(dto);
-    return res.status(201).json({
-      message: 'Create owner successfully',
-      data: {
-        user,
-      },
-    });
-  }
-
-  async updateRole(req: Request, res: Response, _next: NextFunction) {
-    const dto = req.body as UpdateRoleDto;
-    const user_id = req.params.id as string;
-    const user = await this.authService.updateRole(dto, user_id);
-    return res.status(200).json({
-      message: 'Update role successfully',
-      data: {
         user,
       },
     });

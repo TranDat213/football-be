@@ -1,9 +1,10 @@
-import { User } from "@prisma/client";
+import { OwnerRegistration, User, UserRole } from "@prisma/client";
 import { IUserRepository } from "../domain/user.repository";
-import { UpdateProfileDto } from "../dto/user.dto";
-import { BadRequestException, NotFoundException } from "@/utils/app-error";
+import { AddOwnerDto, OwnerRegisterDto, UpdateProfileDto, UpdateRoleDto } from "../dto/user.dto";
+import { BadRequestException, InternalServerException, NotFoundException } from "@/utils/app-error";
 import { deleteImageFromCloudinary, FolderType, uploadToCloudinary } from "@/utils/cloudinary";
 import 'multer';
+import bcrypt from 'bcryptjs';
 
 export class UserService{
     constructor(
@@ -64,4 +65,92 @@ export class UserService{
         }
         return await this.userRepository.updateProfile(id, data,avatarUrl!,avatarPublicId!);
     }
+
+    async createOwner(data: AddOwnerDto): Promise<User> {
+        try {
+          if (data.email) {
+            const user = await this.userRepository.findProfileByEmail(data.email);
+            if (user) {
+              throw new BadRequestException('Email already exists');
+            }
+          }
+          if (data.email) {
+            const user = await this.userRepository.findProfileByUsername(data.email);
+            if (user) {
+              throw new BadRequestException('Username already exists');
+            }
+          }
+          if (data.phone) {
+            const user = await this.userRepository.findProfileByPhone(data.phone);
+            if (user) {
+              throw new BadRequestException('Phone already exists');
+            }
+          }
+    
+          const hashedPassword = await bcrypt.hash(data.password || '12345678', 10);
+          return await this.userRepository.createOwner({
+            first_name: data.first_name,
+            last_name: data.last_name,
+            email: data.email,
+            phone: data.phone,
+            password: hashedPassword,
+          });
+        } catch (error) {
+          console.error(error);
+          if (error instanceof BadRequestException) {
+            throw error;
+          }
+          throw new InternalServerException('Failed to create owner');
+        }
+      }
+    
+      async updateRole(data: UpdateRoleDto, user_id: string): Promise<User> {
+        try {
+          if (!user_id) {
+            throw new BadRequestException('User ID is required');
+          }
+          const user = await this.userRepository.getProfileById(user_id);
+          if (!user) {
+            throw new NotFoundException('User not found');
+          }
+          return await this.userRepository.updateRole(data, user_id);
+        } catch (error) {
+          if (error instanceof BadRequestException) {
+            throw error;
+          }
+          throw new InternalServerException('Failed to update role');
+        }
+      }
+
+      async createOwnerRegister(
+          data: OwnerRegisterDto,
+        ): Promise<OwnerRegistration> {
+          try {
+            // Validate email is provided
+            if (!data.email) {
+              throw new BadRequestException('Email is required');
+            }
+      
+            // Check if email already exists
+            const existingUser = await this.userRepository.findProfileByEmail(
+              data.email,
+            );
+            if (data.user_id) {
+              const user = await this.userRepository.getProfileById(data.user_id);
+              if (!user) {
+                throw new NotFoundException('User not found');
+              }
+      
+              if (user.role === UserRole.OWNER) {
+                throw new BadRequestException('You are already an owner.');
+              }
+            }
+            return await this.userRepository.createOwnerRegister(data);
+          } catch (error) {
+            if (error instanceof BadRequestException) {
+              throw error;
+            }
+            throw new InternalServerException('Failed to register owner');
+          }
+        }
 }
