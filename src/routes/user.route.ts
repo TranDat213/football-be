@@ -8,8 +8,8 @@ import { UserService } from '@/modules/user/application/user.service';
 import { PrismaUserRepository } from '@/modules/user/infrastructure/prisma-user.repository';
 import prisma from '@/lib/prisma';
 import { upload } from '@/middleware/upload';
-import { authorize } from 'passport';
 import { UserRole } from '@prisma/client';
+import { authorize } from '@/middleware/authorize.middlerware';
 
 const userRouter = Router();
 const userRepository = new PrismaUserRepository(prisma);
