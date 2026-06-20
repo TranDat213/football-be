@@ -21,7 +21,6 @@ const authController = new AuthController(authService);
 
 authRouter.post(
   '/refresh',
-  authenticate,
   asyncHandler(authController.refreshToken.bind(authController)),
 );
 authRouter.post(

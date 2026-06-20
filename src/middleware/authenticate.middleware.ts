@@ -9,7 +9,7 @@ const authRepository = new PrismaAuthRepository(prisma);
 
 export const authenticate = async (req: Request, _res: Response, next: NextFunction) => {
   try {
-    const token = req.cookies.accessToken || req.headers.authorization?.split(' ')[1];
+    const token = req.cookies.accessToken;
 
     if (!token) {
       return next(new UnauthorizedException('Authentication token missing'));

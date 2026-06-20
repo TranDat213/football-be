@@ -17,15 +17,13 @@ export class AuthController {
     const dto = req.body as SignInDto;
     const user = await this.authService.signIn(dto);
     const userId = user?.id.toString();
-    const { accessToken, refreshToken } = setJwtAuthCookie({
+    setJwtAuthCookie({
       res,
       userId: userId!,
     });
     return res.status(200).json({
       message: 'Login successfully',
       data: {
-        accessToken,
-        refreshToken,
         user,
       },
     });
@@ -62,33 +60,36 @@ export class AuthController {
     const dto = req.body as OAuthDto;
     const user = await this.authService.signInByProvider(dto);
     const userId = user?.id.toString();
-    const { accessToken, refreshToken } = setJwtAuthCookie({
+    setJwtAuthCookie({
       res,
       userId: userId!,
     });
     return res.status(200).json({
       message: 'OAuth user successfully',
       data: {
-        accessToken,
-        refreshToken,
         user,
       },
     });
   }
 
   async refreshToken(req: Request, res: Response, _next: NextFunction) {
-    const user_id = req.user?.id;
-    const { accessToken, refreshToken } = setJwtAuthCookie({
-      res,
-      userId: user_id!,
-    });
-    return res.status(200).json({
-      message: 'Refresh token successfully',
-      data: {
-        accessToken,
-        refreshToken,
-      },
-    });
+    const refreshTokenValue = req.cookies.refreshToken;
+    if (!refreshTokenValue) {
+      return res.status(401).json({ message: 'Refresh token missing' });
+    }
+
+    try {
+      const decoded = await this.authService.verifyRefreshToken(refreshTokenValue);
+      setJwtAuthCookie({
+        res,
+        userId: decoded.userId,
+      });
+      return res.status(200).json({
+        message: 'Refresh token successfully',
+      });
+    } catch (error) {
+      return res.status(401).json({ message: 'Invalid or expired refresh token' });
+    }
   }
 
   async requestOtp(req: Request, res: Response, _next: NextFunction) {

@@ -84,7 +84,20 @@ export class OAuthDto {
   provider!: ProviderType;
 
   @IsString()
+  @IsString()
   providerId!: string;
+
+  @IsString()
+  @IsOptional()
+  firstName?: string;
+
+  @IsString()
+  @IsOptional()
+  lastName?: string;
+
+  @IsString()
+  @IsOptional()
+  avatarUrl?: string;
 }
 
 export class VerifyOtpDto{

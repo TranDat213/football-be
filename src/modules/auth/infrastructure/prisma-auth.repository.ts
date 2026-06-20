@@ -69,13 +69,15 @@ export class PrismaAuthRepository implements IAuthRepository {
       update: {
         provider: data.provider,
         providerId: data.providerId,
+        avatarUrl: data.avatarUrl,
         updatedAt: new Date(),
       },
       create: {
         email: data.email,
-        firstName: usernamePrefix,
-        lastName: 'User',
+        firstName: data.firstName || usernamePrefix,
+        lastName: data.lastName || 'User',
         username: `${usernamePrefix}_${Math.floor(Math.random() * 1000)}`,
+        avatarUrl: data.avatarUrl,
         provider: data.provider,
         providerId: data.providerId,
       },

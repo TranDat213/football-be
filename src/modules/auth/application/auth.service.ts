@@ -1,5 +1,6 @@
 import { OwnerRegistration, User, UserRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { IAuthRepository, OtpData } from '../domain/auth.repository';
 import {
   ForgotPasswordDto,
@@ -21,6 +22,7 @@ export class AuthService {
   constructor(private readonly authRepository: IAuthRepository) {}
 
   private otpStore = new Map<string, OtpData>();
+
   async signUp(data: SignUpDto): Promise<User> {
     try {
       const {
@@ -138,6 +140,7 @@ export class AuthService {
       throw new InternalServerException('Failed to forgot password');
     }
   }
+
   async signInByProvider(data: OAuthDto): Promise<User> {
     try {
       const existingByProvider =
@@ -151,24 +154,20 @@ export class AuthService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerException('Failed to forgot password');
+      throw new InternalServerException('Failed to sign in by provider');
     }
   }
- 
+
   async requestOtp(email: string): Promise<void> {
     try {
       const user = await this.authRepository.findUserByEmail(email);
-
-      console.log('2. user:', user?.email);
       if (!user) {
         throw new NotFoundException('Email not found');
       }
       const otpData = this.otpStore.get(email);
       if (otpData) {
         const now = Date.now();
-
         const cooldown = parseInt(process.env.OTP_COOLDOWN || '60000');
-
         if (now - otpData.lastSentAt < cooldown) {
           throw new BadRequestException(
             'Please wait before requesting another OTP.',
@@ -184,9 +183,8 @@ export class AuthService {
         lastSentAt: Date.now(),
       });
       await mailService.sendVerificationEmail(email, otp);
-      console.log('4. mail sent');
     } catch (error) {
-      if (error instanceof BadRequestException) {
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
         throw error;
       }
       console.error(error);
@@ -219,10 +217,18 @@ export class AuthService {
       }
       this.otpStore.delete(data.email);
     } catch (error) {
-      if (error instanceof BadRequestException) {
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
         throw error;
       }
       throw new InternalServerException('Failed to verify OTP');
+    }
+  }
+
+  async verifyRefreshToken(token: string): Promise<{ userId: string }> {
+    try {
+      return jwt.verify(token, process.env.JWT_REFRESH_SECRET || '') as { userId: string };
+    } catch (error) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
     }
   }
 }

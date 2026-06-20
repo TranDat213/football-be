@@ -35,24 +35,29 @@ const createRefreshToken = (userId: string) => {
 export const setJwtAuthCookie = ({ res, userId }: Cookie) => {
     const accessToken = createAccessToken(userId);
     const refreshToken = createRefreshToken(userId);
+    
+    const isProduction = Env.NODE_ENV === 'production';
+
     res.cookie('accessToken', accessToken, {
         maxAge: ms(Env.COOKIE_MAX_AGE as Duration),
         httpOnly: true,
-        secure: Env.NODE_ENV === 'production',
-        sameSite: Env.NODE_ENV === 'production' ? 'none' : 'lax',
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        path: '/',
     });
 
     res.cookie('refreshToken', refreshToken, {
         maxAge: ms(Env.COOKIE_REFRESH_MAX_AGE as Duration),
         httpOnly: true,
-        secure: Env.NODE_ENV === 'production',
-        sameSite: Env.NODE_ENV === 'production' ? 'none' : 'lax',
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        path: '/',
     });
+
     return {
         accessToken,
         refreshToken,
     };
-
 }
 export const clearAuthCookie = (res: Response) => {
     res.clearCookie('accessToken', { path: '/' });
