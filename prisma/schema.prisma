@@ -145,6 +145,13 @@ enum ProviderType {
   GOOGLE
   FACEBOOK
 }
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
 // ─────────────────────────────────────────
 // DOMAIN: USERS
 // ─────────────────────────────────────────
@@ -179,6 +186,7 @@ model User {
   receivedNotifications Notification[]         @relation("NotificationRecipient")
   conversations         Conversation[]
   ownerRegistration     OwnerRegistration[]
+  payouts               Payout[]
 
   @@index([role, status])
   @@index([deletedAt])
@@ -333,11 +341,40 @@ model Booking {
   user      User      @relation(fields: [userId], references: [id])
   fieldYard FieldYard @relation(fields: [fieldYardId], references: [id])
   payment   Payment?
+  commission Commission?
 
   @@index([fieldYardId, bookingDate, startTime, endTime])
   @@index([userId, status])
   @@index([bookingDate, status])
   @@map("bookings")
+}
+
+model Commission {
+  id         String   @id @default(uuid())
+  bookingId  String   @unique @map("booking_id")
+  amount     Decimal  @db.Decimal(12, 2)
+  percentage Float    @default(10.0)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("commissions")
+}
+
+model Payout {
+  id            String       @id @default(uuid())
+  ownerId       String       @map("owner_id")
+  amount        Decimal      @db.Decimal(12, 2)
+  status        PayoutStatus @default(PENDING)
+  bankAccount   String       @map("bank_account")
+  bankName      String       @map("bank_name")
+  transactionId String?      @unique @map("transaction_id")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  owner User @relation(fields: [ownerId], references: [id])
+
+  @@map("payouts")
 }
 
 model Payment {

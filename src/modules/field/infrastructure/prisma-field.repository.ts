@@ -51,6 +51,7 @@ export class PrismaFieldRepository implements IFieldRepository {
       orderBy: { createdAt: 'desc' },
     });
   }
+
   async findOwner(ownerId: string): Promise<User | null> {
     return await this.prisma.user.findUnique({
       where: { id: ownerId, deletedAt: null },
