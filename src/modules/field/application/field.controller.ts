@@ -113,4 +113,14 @@ export class FieldController {
       .status(200)
       .json({ message: 'Field images found successfully', data: fieldImages });
   }
+
+  async getAvailability(req: Request, res: Response, _next: NextFunction) {
+    const fieldId = req.params.id as string;
+    const date = req.query.date as string || new Date().toISOString().split('T')[0];
+    const availability = await this.fieldService.getAvailability(fieldId, date);
+    return res.status(200).json({
+      message: 'Availability fetched successfully',
+      data: availability
+    });
+  }
 }

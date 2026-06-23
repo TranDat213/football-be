@@ -35,4 +35,5 @@ export interface IFieldRepository {
   findFieldImageById(fieldImageId: string): Promise<FieldImage | null>;
   findFieldImagesByFieldId(page:number,limit:number,fieldId: string): Promise<FieldImage[]>;
   findFieldByOwnerId(ownerId: string): Promise<FootballField | null >;
+  getAvailability(fieldId: string, date: Date): Promise<any>;
 }

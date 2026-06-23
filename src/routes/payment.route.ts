@@ -20,10 +20,9 @@ const vnpayService = new VNPayService();
 const paymentController = new PaymentController(vnpayService, bookingService);
 
 paymentRouter.post(
-  '/vnpay/create',
+  '/create',
   authenticate,
-  validateDto(CreatePaymentUrlDto),
-  asyncHandler(paymentController.createVNPayUrl.bind(paymentController))
+  asyncHandler(paymentController.createPayment.bind(paymentController))
 );
 
 paymentRouter.get(

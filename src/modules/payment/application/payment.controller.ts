@@ -9,21 +9,27 @@ export class PaymentController {
     private readonly bookingService: BookingService
   ) {}
 
-  async createVNPayUrl(req: Request, res: Response, _next: NextFunction) {
-    const { bookingId } = req.body;
+  async createPayment(req: Request, res: Response, _next: NextFunction) {
+    const { bookingId, paymentMethod } = req.body;
     const booking = await this.bookingService.getBookingById(bookingId);
 
     if (booking.status !== 'PENDING') {
       throw new BadRequestException('Đơn hàng đã được thanh toán hoặc không còn khả dụng');
     }
 
-    const ip = req.ip || '127.0.0.1';
-    const paymentUrl = this.vnpayService.createPaymentUrl(ip, booking.id, Number(booking.totalPrice));
+    if (paymentMethod === 'VNPAY') {
+      const ip = req.ip || '127.0.0.1';
+      const paymentUrl = this.vnpayService.createPaymentUrl(ip, booking.id, Number(booking.totalPrice));
+      return res.status(200).json({ success: true, paymentUrl });
+    }
 
-    return res.status(200).json({
-      success: true,
-      paymentUrl
-    });
+    if (paymentMethod === 'CASH') {
+      // Just update status to PENDING or stay UNPAID but with note
+      return res.status(200).json({ success: true, message: 'Vui lòng thanh toán tại quầy' });
+    }
+
+    // Placeholder for MOMO, BANK_TRANSFER
+    return res.status(200).json({ success: true, message: `Phương thức ${paymentMethod} đang được phát triển` });
   }
 
   async handleVNPayIPN(req: Request, res: Response, _next: NextFunction) {

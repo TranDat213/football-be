@@ -7,6 +7,9 @@ import userRouter from './user.route';
 import bookingRouter from './booking.route';
 import paymentRouter from './payment.route';
 import settlementRouter from './settlement.route';
+import { operatingHourRouter } from './operating-hour.route';
+import { priceRuleRouter } from './price-rule.route';
+import fieldYardRouter from './field-yard.route';
 
 const routers = Router();
 
@@ -18,4 +21,7 @@ routers.use('/user', userRouter);
 routers.use('/bookings', bookingRouter);
 routers.use('/payments', paymentRouter);
 routers.use('/settlements', settlementRouter);
+routers.use('/operating-hours', operatingHourRouter);
+routers.use('/price-rules', priceRuleRouter);
+routers.use('/field-yards', fieldYardRouter);
 export default routers;

@@ -228,4 +228,47 @@ export class FieldService {
     }
     return await this.fieldRepository.findFieldImagesByFieldId(page,limit,fieldId);
   }
+
+  async getAvailability(fieldId: string, dateStr: string) {
+    const date = new Date(dateStr);
+    const yards = await this.fieldRepository.getAvailability(fieldId, date);
+    
+    // Generate slots for each yard (simplified for now: 6:00 to 22:00, 1.5h per slot)
+    // In a real app, this should come from operating hours.
+    const slots = [];
+    const startTime = 6;
+    const endTime = 22;
+    const slotDuration = 1.5;
+
+    for (let h = startTime; h < endTime; h += slotDuration) {
+      const h_start = Math.floor(h);
+      const m_start = (h % 1) * 60;
+      const h_end = Math.floor(h + slotDuration);
+      const m_end = ((h + slotDuration) % 1) * 60;
+
+      const formatTime = (hh: number, mm: number) => `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
+      const startStr = formatTime(h_start, m_start);
+      const endStr = formatTime(h_end, m_end);
+
+      // Check if ANY yard is available for this slot
+      const isBooked = yards.some((yard: any) => 
+        yard.bookings.some((b: any) => {
+          const b_start = b.startTime.getUTCHours() + b.startTime.getUTCMinutes() / 60;
+          const b_end = b.endTime.getUTCHours() + b.endTime.getUTCMinutes() / 60;
+          return (h < b_end && (h + slotDuration) > b_start);
+        })
+      );
+
+      slots.push({
+        startTime: startStr,
+        endTime: endStr,
+        status: isBooked ? 'BOOKED' : 'AVAILABLE'
+      });
+    }
+
+    return {
+      date: dateStr,
+      slots: slots
+    };
+  }
 }

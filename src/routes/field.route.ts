@@ -89,4 +89,9 @@ fieldRouter.get(
   '/image/field/:id',
   asyncHandler(fieldController.findFieldImagesByFieldId.bind(fieldController)),
 );
+fieldRouter.get(
+  '/:id/availability',
+  async (req, res, next) => await fieldController.getAvailability(req, res, next),
+);
+
 export default fieldRouter;

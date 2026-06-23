@@ -181,4 +181,31 @@ export class PrismaFieldRepository implements IFieldRepository {
       },
     });
   }
+
+  async getAvailability(fieldId: string, date: Date): Promise<any> {
+    const startOfDay = new Date(date);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
+    const yards = await this.prisma.fieldYard.findMany({
+      where: {
+        footballFieldId: fieldId,
+        status: 'ACTIVE',
+        deletedAt: null,
+      },
+      include: {
+        bookings: {
+          where: {
+            bookingDate: date,
+            status: {
+              in: ['PENDING', 'CONFIRMED'],
+            },
+          },
+        },
+      },
+    });
+
+    return yards;
+  }
 }
