@@ -13,6 +13,15 @@ export class UserController{
             data: userProfile,
         });
     }
+    async getUserById(req:Request, res:Response, _next:NextFunction) {
+        const id = req.params.id as string;
+        const userProfile = await this.userService.getProfileById(id);
+        return res.status(200).json({
+            success: true,
+            message: "User profile fetched successfully",
+            data: userProfile,
+        });
+    }
     async updateProfile(req:Request, res:Response, _next:NextFunction) {
         const id = req.user?.id as string;
         const data = req.body;

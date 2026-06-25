@@ -29,6 +29,8 @@ export interface IFieldRepository {
     status: FieldStatus,
   ): Promise<FootballField>;
 
+  findFieldActiveStatus(page:number,limit:number): Promise<FootballField[]>;
+
   createFieldImage(data: CreateFieldImageDto,imageUrl:string,imagePublicId:string): Promise<FieldImage>;
   updateFieldImage(fieldImageId: string, data: UpdateFieldImageDto,imageUrl:string | null,imagePublicId:string | null ): Promise<FieldImage>;
   deleteFieldImage(fieldImageId: string): Promise<FieldImage>;

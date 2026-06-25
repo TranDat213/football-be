@@ -17,6 +17,65 @@ import { BadRequestException } from '@/utils/app-error';
 import { deleteImageFromCloudinary, FolderType, uploadToCloudinary } from '@/utils/cloudinary';
 import 'multer';
 
+const SLOT_MINUTES = 90; // 1.5 giờ = 90 phút
+const DEFAULT_OPEN_MIN = 6 * 60;   // 360
+const DEFAULT_CLOSE_MIN = 22 * 60; // 1320
+ 
+function toMinutes(value: Date | string): number {
+  if (value instanceof Date) {
+    return value.getUTCHours() * 60 + value.getUTCMinutes();
+  }
+  const [h, m] = String(value).split(':').map(Number);
+  return h * 60 + (m || 0);
+}
+ 
+function formatMinutes(totalMinutes: number): string {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+}
+ 
+/**
+ * Tìm price rule phù hợp nhất cho slot [slotStart, slotEnd] (đơn vị: phút).
+ *
+ * Ưu tiên: specialDate > dayOfWeek cụ thể > dayOfWeek null (mọi ngày).
+ * Điều kiện match: slot phải nằm HOÀN TOÀN trong khoảng của rule.
+ */
+function resolvePrice(
+  priceRules: any[],
+  slotStartMin: number,
+  slotEndMin: number,
+  dayOfWeek: number,
+  date: Date,
+): { price: number; label: string | null } {
+  const dateStr = date.toISOString().slice(0, 10);
+ 
+  const candidates = priceRules.filter((rule) => {
+    const rStart = toMinutes(rule.startTime);
+    const rEnd   = toMinutes(rule.endTime);
+    return slotStartMin >= rStart && slotEndMin <= rEnd;
+  });
+ 
+  // 1. specialDate khớp ngày — ưu tiên cao nhất
+  const specialRule = candidates.find(
+    (r) => r.specialDate && r.specialDate.toISOString().slice(0, 10) === dateStr,
+  );
+  if (specialRule) return { price: Number(specialRule.price), label: specialRule.label ?? null };
+ 
+  // 2. dayOfWeek cụ thể
+  const dayRule = candidates.find(
+    (r) => r.dayOfWeek === dayOfWeek && r.specialDate == null,
+  );
+  if (dayRule) return { price: Number(dayRule.price), label: dayRule.label ?? null };
+ 
+  // 3. Áp dụng mọi ngày (dayOfWeek null)
+  const fallbackRule = candidates.find(
+    (r) => r.dayOfWeek == null && r.specialDate == null,
+  );
+  if (fallbackRule) return { price: Number(fallbackRule.price), label: fallbackRule.label ?? null };
+ 
+  return { price: 0, label: null };
+}
 export class FieldService {
   constructor(private readonly fieldRepository: IFieldRepository) {}
 
@@ -229,46 +288,63 @@ export class FieldService {
     return await this.fieldRepository.findFieldImagesByFieldId(page,limit,fieldId);
   }
 
-  async getAvailability(fieldId: string, dateStr: string) {
-    const date = new Date(dateStr);
-    const yards = await this.fieldRepository.getAvailability(fieldId, date);
-    
-    // Generate slots for each yard (simplified for now: 6:00 to 22:00, 1.5h per slot)
-    // In a real app, this should come from operating hours.
+  
+ async getAvailability(fieldId: string, dateStr: string) {
+  const date = new Date(dateStr);
+  const dayOfWeek = date.getUTCDay(); // 0=CN,1=T2,...,6=T7
+ 
+  const yards = await this.fieldRepository.getAvailability(fieldId, date);
+ 
+  const yardsWithSlots = yards.map((yard: any) => {
+    // Giờ mở/đóng theo dayOfWeek, fallback về default
+    const opHour     = yard.operatingHours.find((oh: any) => oh.dayOfWeek === dayOfWeek);
+    const openMin    = opHour ? toMinutes(opHour.openTime)  : DEFAULT_OPEN_MIN;
+    const closeMin   = opHour ? toMinutes(opHour.closeTime) : DEFAULT_CLOSE_MIN;
+ 
+    // Booking ranges (phút)
+    const bookedRanges: [number, number][] = yard.bookings.map((b: any) => [
+      toMinutes(b.startTime),
+      toMinutes(b.endTime),
+    ]);
+ 
     const slots = [];
-    const startTime = 6;
-    const endTime = 22;
-    const slotDuration = 1.5;
-
-    for (let h = startTime; h < endTime; h += slotDuration) {
-      const h_start = Math.floor(h);
-      const m_start = (h % 1) * 60;
-      const h_end = Math.floor(h + slotDuration);
-      const m_end = ((h + slotDuration) % 1) * 60;
-
-      const formatTime = (hh: number, mm: number) => `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
-      const startStr = formatTime(h_start, m_start);
-      const endStr = formatTime(h_end, m_end);
-
-      // Check if ANY yard is available for this slot
-      const isBooked = yards.some((yard: any) => 
-        yard.bookings.some((b: any) => {
-          const b_start = b.startTime.getUTCHours() + b.startTime.getUTCMinutes() / 60;
-          const b_end = b.endTime.getUTCHours() + b.endTime.getUTCMinutes() / 60;
-          return (h < b_end && (h + slotDuration) > b_start);
-        })
+    for (let start = openMin; start + SLOT_MINUTES <= closeMin; start += SLOT_MINUTES) {
+      const end = start + SLOT_MINUTES;
+ 
+      const isBooked = bookedRanges.some(
+        ([bStart, bEnd]) => start < bEnd && end > bStart,
       );
-
+ 
+      const { price, label } = resolvePrice(
+        yard.priceRules,
+        start,
+        end,
+        dayOfWeek,
+        date,
+      );
+ 
       slots.push({
-        startTime: startStr,
-        endTime: endStr,
-        status: isBooked ? 'BOOKED' : 'AVAILABLE'
+        startTime:  formatMinutes(start),
+        endTime:    formatMinutes(end),
+        status:     isBooked ? 'BOOKED' : 'AVAILABLE',
+        price,
+        priceLabel: label,
       });
     }
-
+ 
     return {
-      date: dateStr,
-      slots: slots
+      yardId:   yard.id,
+      yardName: yard.name,
+      yardCode: yard.code,
+      type:     yard.type,
+      slots,
     };
+  });
+ 
+  return { date: dateStr, yards: yardsWithSlots };
+}
+
+  async findFieldActiveStatus(page:number,limit:number): Promise<FootballField[]> {
+    return await this.fieldRepository.findFieldActiveStatus(page,limit);
   }
 }

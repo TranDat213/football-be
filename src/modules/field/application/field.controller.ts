@@ -123,4 +123,13 @@ export class FieldController {
       data: availability
     });
   }
+
+  async findFieldActiveStatus(req: Request, res: Response, _next: NextFunction) {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const fields = await this.fieldService.findFieldActiveStatus(page,limit);
+    return res
+      .status(200)
+      .json({ message: 'Fields found successfully', data: fields });
+  }
 }

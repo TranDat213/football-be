@@ -59,6 +59,7 @@ fieldRouter.get(
   authorize(UserRole.OWNER),
   asyncHandler(fieldController.getFieldByOwnerId.bind(fieldController)),
 );
+
 fieldRouter.post(
   '/image',
   authenticate,
@@ -91,7 +92,10 @@ fieldRouter.get(
 );
 fieldRouter.get(
   '/:id/availability',
-  async (req, res, next) => await fieldController.getAvailability(req, res, next),
+  asyncHandler(fieldController.getAvailability.bind(fieldController)),
 );
-
+fieldRouter.get(
+  '/active',
+  asyncHandler(fieldController.findFieldActiveStatus.bind(fieldController)),
+);
 export default fieldRouter;

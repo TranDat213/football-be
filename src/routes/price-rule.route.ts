@@ -14,6 +14,13 @@ const priceRuleRepository = new PrismaPriceRuleRepository(prisma);
 const priceRuleService = new PriceRuleService(priceRuleRepository);
 const priceRuleController = new PriceRuleController(priceRuleService);
 
+priceRuleRouter.post(
+  '/:yardId',
+  authenticate,
+  authorize(UserRole.OWNER, UserRole.ADMIN),
+  validateDto(CreateFieldPriceRuleDto),
+  priceRuleController.create.bind(priceRuleController),
+)
 priceRuleRouter.get(
   '/:id',
   priceRuleController.getById.bind(priceRuleController),

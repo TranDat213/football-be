@@ -21,6 +21,11 @@ userRouter.get(
   authenticate,
   asyncHandler(userController.getProfileById.bind(userController)),
 );
+userRouter.get(
+  '/:id',
+  authenticate,
+  asyncHandler(userController.getUserById.bind(userController)),
+);
 userRouter.put(
   '/profile',
   authenticate,

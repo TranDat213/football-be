@@ -14,6 +14,14 @@ const operatingHourRepository = new PrismaOperatingHourRepository(prisma);
 const operatingHourService = new OperatingHourService(operatingHourRepository);
 const operatingHourController = new OperatingHourController(operatingHourService);
 
+operatingHourRouter.post(
+  '/:yardId',
+  authenticate,
+  authorize(UserRole.OWNER, UserRole.ADMIN),
+  validateDto(CreateFieldOperatingHourDto),
+  operatingHourController.create.bind(operatingHourController),
+)
+
 operatingHourRouter.get(
   '/:id',
   operatingHourController.getById.bind(operatingHourController),
