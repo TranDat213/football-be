@@ -1,5 +1,8 @@
 import { BookingStatus, PaymentStatus, PrismaClient } from '@prisma/client';
-import { BadRequestException, NotFoundException } from '../../../utils/app-error';
+import {
+  BadRequestException,
+  NotFoundException,
+} from '../../../utils/app-error';
 import { IBookingRepository } from '../domain/booking.repository';
 import { CreateBookingDto } from '../dto/booking.dto';
 import { EmailService } from '../infrastructure/email.service';
@@ -9,7 +12,7 @@ export class BookingService {
   constructor(
     private readonly bookingRepository: IBookingRepository,
     private readonly emailService: EmailService,
-    private readonly prisma: PrismaClient
+    private readonly prisma: PrismaClient,
   ) {}
 
   async createBooking(userId: string, data: CreateBookingDto) {
@@ -27,22 +30,31 @@ export class BookingService {
       data.fieldYardId,
       data.bookingDate,
       data.startTime,
-      data.endTime
+      data.endTime,
     );
 
     if (!isAvailable) {
-      throw new BadRequestException('Khung giờ này đã có người đặt, vui lòng chọn khung giờ khác');
+      throw new BadRequestException(
+        'Khung giờ này đã có người đặt, vui lòng chọn khung giờ khác',
+      );
     }
 
-    const priceRules = await this.bookingRepository.findPriceRules(data.fieldYardId, data.bookingDate);
-    const totalPrice = this.calculateTotalPrice(data.startTime, data.endTime, priceRules);
+    const priceRules = await this.bookingRepository.findPriceRules(
+      data.fieldYardId,
+      data.bookingDate,
+    );
+    const totalPrice = this.calculateTotalPrice(
+      data.startTime,
+      data.endTime,
+      priceRules,
+    );
 
     return await this.bookingRepository.create({
       ...data,
       userId,
       totalPrice,
       status: BookingStatus.PENDING,
-      paymentStatus: PaymentStatus.UNPAID
+      paymentStatus: PaymentStatus.UNPAID,
     });
   }
 
@@ -51,7 +63,10 @@ export class BookingService {
       // 1. Get booking
       const booking = await tx.booking.findUnique({
         where: { id: bookingId },
-        include: { user: true, fieldYard: { include: { footballField: true } } }
+        include: {
+          user: true,
+          fieldYard: { include: { footballField: true } },
+        },
       });
 
       if (!booking) throw new NotFoundException('Booking not found');
@@ -61,8 +76,8 @@ export class BookingService {
         where: { id: bookingId },
         data: {
           status: BookingStatus.CONFIRMED,
-          paymentStatus: PaymentStatus.PAID
-        }
+          paymentStatus: PaymentStatus.PAID,
+        },
       });
 
       await tx.payment.create({
@@ -73,8 +88,8 @@ export class BookingService {
           amount: Number(booking.totalPrice),
           status: PaymentStatus.PAID,
           paidAt: new Date(),
-          gatewayResponse: vnpParams
-        }
+          gatewayResponse: vnpParams,
+        },
       });
 
       // 3. Create Commission (10%)
@@ -82,32 +97,40 @@ export class BookingService {
         data: {
           bookingId,
           amount: Number(booking.totalPrice) * 0.1,
-          percentage: 10
-        }
+          percentage: 10,
+        },
       });
 
       // 4. Send Email (Wait for background or do async)
-      this.emailService.sendBookingConfirmation(booking.user.email, {
-        bookingId: booking.id,
-        userName: `${booking.user.firstName} ${booking.user.lastName}`,
-        yardName: `${booking.fieldYard.footballField.name} - ${booking.fieldYard.name}`,
-        date: format(booking.bookingDate, 'dd/MM/yyyy'),
-        time: `${format(booking.startTime, 'HH:mm')} - ${format(booking.endTime, 'HH:mm')}`,
-        totalPrice: Number(booking.totalPrice)
-      }).catch(err => console.error('Failed to send confirmation email:', err));
+      this.emailService
+        .sendBookingConfirmation(booking.user.email, {
+          bookingId: booking.id,
+          userName: `${booking.user.firstName} ${booking.user.lastName}`,
+          yardName: `${booking.fieldYard.footballField.name} - ${booking.fieldYard.name}`,
+          date: format(booking.bookingDate, 'dd/MM/yyyy'),
+          time: `${format(booking.startTime, 'HH:mm')} - ${format(booking.endTime, 'HH:mm')}`,
+          totalPrice: Number(booking.totalPrice),
+        })
+        .catch((err) =>
+          console.error('Failed to send confirmation email:', err),
+        );
 
       return true;
     });
   }
 
-  private calculateTotalPrice(start: string, end: string, rules: any[]): number {
-    // Logic: Find rule that covers the time range. 
+  private calculateTotalPrice(
+    start: string,
+    end: string,
+    rules: any[],
+  ): number {
+    // Logic: Find rule that covers the time range.
     // In a production system, this could be more complex (e.g., spanning multiple partial rules).
     // For simplicity, we find the first matching rule or return a default.
     const startTimeObj = new Date(`1970-01-01T${start}:00Z`);
     const endTimeObj = new Date(`1970-01-01T${end}:00Z`);
 
-    const matchingRule = rules.find(rule => {
+    const matchingRule = rules.find((rule) => {
       const ruleStart = new Date(rule.startTime);
       const ruleEnd = new Date(rule.endTime);
       return startTimeObj >= ruleStart && endTimeObj <= ruleEnd;
@@ -115,7 +138,7 @@ export class BookingService {
 
     if (!matchingRule) {
       // Fallback price if no rules match
-      return 100000; 
+      return 100000;
     }
 
     return Number(matchingRule.price);
@@ -135,5 +158,9 @@ export class BookingService {
 
   async getOwnerBookings(ownerId: string, filter: any) {
     return await this.bookingRepository.findByOwnerId(ownerId, filter);
+  }
+
+  async countTotalBookingByOwner(ownerId: string) {
+    return await this.bookingRepository.countTotalBookingByOwner(ownerId);
   }
 }

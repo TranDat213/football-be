@@ -20,3 +20,18 @@ export const normalizeSlug = (
 
   return normalized.slice(0, maxLength).replace(/-+$/g, '');
 };
+
+export const appendSlugSuffix = (
+  baseSlug: string,
+  suffix: number,
+  maxLength: number = Number(process.env.MAX_SLUG_LENGTH) || 60,
+): string => {
+  const suffixText = `-${suffix}`;
+
+  const trimmedBase = baseSlug.slice(
+    0,
+    Math.max(1, maxLength - suffixText.length),
+  );
+
+  return `${trimmedBase.replace(/-+$/g, '')}${suffixText}`;
+};

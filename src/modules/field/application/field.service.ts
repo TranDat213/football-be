@@ -11,7 +11,7 @@ import {
   UpdateFieldDto,
   UpdateFieldImageDto,
 } from '../dto/field.dto';
-import { normalizeSlug } from '@/utils/slug';
+import { appendSlugSuffix, normalizeSlug } from '@/utils/slug';
 import { Env } from '@/config/env.config';
 import { BadRequestException } from '@/utils/app-error';
 import { deleteImageFromCloudinary, FolderType, uploadToCloudinary } from '@/utils/cloudinary';
@@ -79,8 +79,25 @@ function resolvePrice(
 export class FieldService {
   constructor(private readonly fieldRepository: IFieldRepository) {}
 
+  async generateUniqueSlug(name: string): Promise<string> {
+  const baseSlug = normalizeSlug(name);
+
+  if (!baseSlug) {
+    throw new BadRequestException('Tên không hợp lệ');
+  }
+
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (await this.fieldRepository.findBySlug(slug)) {
+    slug = appendSlugSuffix(baseSlug, counter);
+    counter++;
+  }
+
+  return slug;
+}
   async createField(ownerId: string, data: FieldDto): Promise<FootballField> {
-    const slug = normalizeSlug(data.name, Env.MAX_SLUG_LENGTH);
+    const slug = await this.generateUniqueSlug(data.name);
     if (!slug) {
       throw new BadRequestException('Field name is invalid to generate slug');
     }

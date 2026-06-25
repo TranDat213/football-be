@@ -1,4 +1,11 @@
-import { Booking, BookingStatus, FieldPriceRule, FieldYard, PaymentStatus, PrismaClient } from '@prisma/client';
+import {
+  Booking,
+  BookingStatus,
+  FieldPriceRule,
+  FieldYard,
+  PaymentStatus,
+  PrismaClient,
+} from '@prisma/client';
 import { IBookingRepository } from '../domain/booking.repository';
 
 export class PrismaBookingRepository implements IBookingRepository {
@@ -16,7 +23,7 @@ export class PrismaBookingRepository implements IBookingRepository {
         status: data.status,
         paymentStatus: data.paymentStatus,
         note: data.note,
-      }
+      },
     });
   }
 
@@ -26,12 +33,12 @@ export class PrismaBookingRepository implements IBookingRepository {
       include: {
         fieldYard: {
           include: {
-            footballField: true
-          }
+            footballField: true,
+          },
         },
         user: true,
-        payment: true
-      }
+        payment: true,
+      },
     });
   }
 
@@ -41,7 +48,7 @@ export class PrismaBookingRepository implements IBookingRepository {
       where: {
         userId,
         status: status || undefined,
-        deletedAt: null
+        deletedAt: null,
       },
       skip: (page - 1) * limit,
       take: limit,
@@ -49,10 +56,10 @@ export class PrismaBookingRepository implements IBookingRepository {
       include: {
         fieldYard: {
           include: {
-            footballField: true
-          }
-        }
-      }
+            footballField: true,
+          },
+        },
+      },
     });
   }
 
@@ -62,11 +69,11 @@ export class PrismaBookingRepository implements IBookingRepository {
       where: {
         fieldYard: {
           footballField: {
-            ownerId: ownerId
-          }
+            ownerId: ownerId,
+          },
         },
         status: status || undefined,
-        deletedAt: null
+        deletedAt: null,
       },
       skip: (page - 1) * limit,
       take: limit,
@@ -74,45 +81,53 @@ export class PrismaBookingRepository implements IBookingRepository {
       include: {
         fieldYard: {
           include: {
-            footballField: true
-          }
+            footballField: true,
+          },
         },
-        user: true
-      }
+        user: true,
+      },
     });
   }
 
-  async checkAvailability(yardId: string, date: string, start: string, end: string): Promise<boolean> {
+  async checkAvailability(
+    yardId: string,
+    date: string,
+    start: string,
+    end: string,
+  ): Promise<boolean> {
     const count = await this.prisma.booking.count({
       where: {
         fieldYardId: yardId,
         bookingDate: new Date(date),
         status: {
-          in: [BookingStatus.PENDING, BookingStatus.CONFIRMED]
+          in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
         },
         OR: [
           {
             startTime: {
-              lt: new Date(`1970-01-01T${end}:00Z`)
+              lt: new Date(`1970-01-01T${end}:00Z`),
             },
             endTime: {
-              gt: new Date(`1970-01-01T${start}:00Z`)
-            }
-          }
+              gt: new Date(`1970-01-01T${start}:00Z`),
+            },
+          },
         ],
-        deletedAt: null
-      }
+        deletedAt: null,
+      },
     });
     return count === 0;
   }
 
   async findYardById(id: string): Promise<FieldYard | null> {
     return await this.prisma.fieldYard.findUnique({
-      where: { id, deletedAt: null }
+      where: { id, deletedAt: null },
     });
   }
 
-  async findPriceRules(yardId: string, date: string): Promise<FieldPriceRule[]> {
+  async findPriceRules(
+    yardId: string,
+    date: string,
+  ): Promise<FieldPriceRule[]> {
     const bookingDate = new Date(date);
     const dayOfWeek = bookingDate.getDay();
 
@@ -121,21 +136,38 @@ export class PrismaBookingRepository implements IBookingRepository {
         fieldYardId: yardId,
         OR: [
           { specialDate: bookingDate },
-          { dayOfWeek: dayOfWeek, specialDate: null }
+          { dayOfWeek: dayOfWeek, specialDate: null },
         ],
-        deletedAt: null
-      }
+        deletedAt: null,
+      },
     });
   }
 
-  async updateStatus(id: string, status: BookingStatus, paymentStatus?: PaymentStatus): Promise<Booking> {
+  async updateStatus(
+    id: string,
+    status: BookingStatus,
+    paymentStatus?: PaymentStatus,
+  ): Promise<Booking> {
     return await this.prisma.booking.update({
       where: { id },
       data: {
         status,
         paymentStatus: paymentStatus || undefined,
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async countTotalBookingByOwner(ownerId: string): Promise<number> {
+    return await this.prisma.booking.count({
+      where: {
+        fieldYard: {
+          footballField: {
+            ownerId: ownerId,
+          },
+        },
+        deletedAt: null,
+      },
     });
   }
 }

@@ -51,9 +51,6 @@ export class SubFieldService {
       if (!field) {
         throw new BadRequestException('Field not found');
       }
-      if (field.status !== 'ACTIVE') {
-        throw new BadRequestException('Field is not active');
-      }
       const code = await this.generateCode(data.field_id, data.type);
       return await this.subFieldRepository.createSubfield(data, code);
     } catch (error) {
@@ -62,8 +59,8 @@ export class SubFieldService {
       }
       throw new InternalServerException('Failed to create subfield');
     }
-  }
 
+  }
   async updateSubfield(
     id: string,
     data: UpdateFieldYardDto,

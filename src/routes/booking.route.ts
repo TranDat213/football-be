@@ -16,7 +16,11 @@ const bookingRouter = Router();
 // Dependencies injection
 const bookingRepository = new PrismaBookingRepository(prisma);
 const emailService = new EmailService();
-const bookingService = new BookingService(bookingRepository, emailService, prisma);
+const bookingService = new BookingService(
+  bookingRepository,
+  emailService,
+  prisma,
+);
 const bookingController = new BookingController(bookingService);
 
 // User Routes
@@ -25,19 +29,19 @@ bookingRouter.post(
   authenticate,
   authorize(UserRole.USER),
   validateDto(CreateBookingDto),
-  asyncHandler(bookingController.createBooking.bind(bookingController))
+  asyncHandler(bookingController.createBooking.bind(bookingController)),
 );
 
 bookingRouter.get(
   '/my-bookings',
   authenticate,
-  asyncHandler(bookingController.getMyBookings.bind(bookingController))
+  asyncHandler(bookingController.getMyBookings.bind(bookingController)),
 );
 
 bookingRouter.get(
   '/:id',
   authenticate,
-  asyncHandler(bookingController.getBookingById.bind(bookingController))
+  asyncHandler(bookingController.getBookingById.bind(bookingController)),
 );
 
 // Owner Routes
@@ -45,7 +49,16 @@ bookingRouter.get(
   '/owner/bookings',
   authenticate,
   authorize(UserRole.OWNER),
-  asyncHandler(bookingController.getOwnerBookings.bind(bookingController))
+  asyncHandler(bookingController.getOwnerBookings.bind(bookingController)),
+);
+
+bookingRouter.get(
+  '/owner/total',
+  authenticate,
+  authorize(UserRole.OWNER),
+  asyncHandler(
+    bookingController.countTotalBookingByOwner.bind(bookingController),
+  ),
 );
 
 export default bookingRouter;

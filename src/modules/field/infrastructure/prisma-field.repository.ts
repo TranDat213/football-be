@@ -282,4 +282,10 @@ export class PrismaFieldRepository implements IFieldRepository {
       },
     });
   }
+
+  async findBySlug(slug: string): Promise<FootballField | null> {
+    return await this.prisma.footballField.findUnique({
+      where: { slug: slug, deletedAt: null },
+    });
+  }
 }

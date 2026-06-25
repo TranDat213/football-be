@@ -8,12 +8,12 @@ export class BookingController {
   async createBooking(req: Request, res: Response, _next: NextFunction) {
     const userId = req.user?.id as string;
     const data = req.body as CreateBookingDto;
-    
+
     const booking = await this.bookingService.createBooking(userId, data);
-    
+
     return res.status(201).json({
       message: 'Đặt sân thành công, vui lòng tiến hành thanh toán',
-      data: booking
+      data: booking,
     });
   }
 
@@ -23,21 +23,25 @@ export class BookingController {
     const limit = parseInt(req.query.limit as string) || 10;
     const status = req.query.status as string;
 
-    const bookings = await this.bookingService.getMyBookings(userId, { page, limit, status });
-    
+    const bookings = await this.bookingService.getMyBookings(userId, {
+      page,
+      limit,
+      status,
+    });
+
     return res.status(200).json({
       message: 'Danh sách đơn đặt sân của bạn',
-      data: bookings
+      data: bookings,
     });
   }
 
   async getBookingById(req: Request, res: Response, _next: NextFunction) {
     const id = req.params.id as string;
     const booking = await this.bookingService.getBookingById(id);
-    
+
     return res.status(200).json({
       message: 'Chi tiết đơn đặt sân',
-      data: booking
+      data: booking,
     });
   }
 
@@ -47,11 +51,28 @@ export class BookingController {
     const limit = parseInt(req.query.limit as string) || 10;
     const status = req.query.status as string;
 
-    const bookings = await this.bookingService.getOwnerBookings(ownerId, { page, limit, status });
-    
+    const bookings = await this.bookingService.getOwnerBookings(ownerId, {
+      page,
+      limit,
+      status,
+    });
+
     return res.status(200).json({
       message: 'Danh sách đơn đặt sân dành cho chủ sân',
-      data: bookings
+      data: bookings,
+    });
+  }
+
+  async countTotalBookingByOwner(
+    req: Request,
+    res: Response,
+    _next: NextFunction,
+  ) {
+    const ownerId = req.user?.id as string;
+    const count = await this.bookingService.countTotalBookingByOwner(ownerId);
+    return res.status(200).json({
+      message: 'Tổng số đơn đặt sân của chủ sân',
+      data: count,
     });
   }
 }
