@@ -3,9 +3,11 @@ import {
   FieldImage,
   FieldStatus,
   FootballField,
+  Prisma,
   User,
 } from '@prisma/client';
 import { CreateFieldImageDto, FieldDto, UpdateFieldDto, UpdateFieldImageDto } from '../dto/field.dto';
+import { FieldImageCompleteDto } from '../dto/create-field-complete.dto';
 
 export interface IFieldRepository {
   createField(
@@ -40,4 +42,22 @@ export interface IFieldRepository {
   getAvailability(fieldId: string, date: Date): Promise<any>;
 
   findBySlug(slug: string): Promise<FootballField | null>;
+
+  // ── Transaction-aware methods (used by CreateFootballFieldUseCase) ──────────
+  createFieldTx(
+    tx: Prisma.TransactionClient,
+    ownerId: string,
+    data: Pick<FieldDto, 'name' | 'description' | 'address' | 'province' | 'district' | 'ward' | 'latitude' | 'longitude'> & {
+      categoryId: string;
+      openTime?: string;
+      closeTime?: string;
+    },
+    slug: string,
+  ): Promise<FootballField>;
+
+  createFieldImagesTx(
+    tx: Prisma.TransactionClient,
+    fieldId: string,
+    images: FieldImageCompleteDto[],
+  ): Promise<Prisma.BatchPayload>;
 }

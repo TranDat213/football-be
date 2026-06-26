@@ -45,11 +45,11 @@ export class SubFieldService {
       const field = await this.subFieldRepository.findFieldByFieldId(
         data.field_id,
       );
-      if (field.ownerId !== ownerId) {
-        throw new BadRequestException('You are not the owner of this field');
-      }
       if (!field) {
         throw new BadRequestException('Field not found');
+      }
+      if (field.ownerId !== ownerId) {
+        throw new BadRequestException('You are not the owner of this field');
       }
       const code = await this.generateCode(data.field_id, data.type);
       return await this.subFieldRepository.createSubfield(data, code);
@@ -95,6 +95,9 @@ export class SubFieldService {
   async deleteSubfield(id: string): Promise<FieldYard> {
     try {
       const subfield = await this.subFieldRepository.getSubfield(id);
+      if (!subfield) {
+        throw new BadRequestException('Subfield not found');
+      }
       if (subfield.status === 'ACTIVE') {
         throw new BadRequestException('Subfield is active');
       }
@@ -111,7 +114,11 @@ export class SubFieldService {
   }
 
   async getSubfield(id: string): Promise<FieldYard> {
-    return await this.subFieldRepository.getSubfield(id);
+    const subfield = await this.subFieldRepository.getSubfield(id);
+    if (!subfield) {
+      throw new BadRequestException('Subfield not found');
+    }
+    return subfield;
   }
 
   async getSubfields(page: number, limit: number): Promise<FieldYard[]> {

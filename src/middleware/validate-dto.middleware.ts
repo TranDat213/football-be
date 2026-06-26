@@ -17,6 +17,7 @@ export const validateDto = (dtoClass: any, type: 'body' | 'query' | 'params' = '
       const messages = errors
         .map((error) => Object.values(error.constraints || {}).join(', '))
         .join('; ');
+      console.log('❌ Validation errors detail:', JSON.stringify(errors, null, 2));
       throw new BadRequestException(messages);
     }
 

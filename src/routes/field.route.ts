@@ -6,6 +6,7 @@ import { upload } from '@/middleware/upload';
 import { validateDto } from '@/middleware/validate-dto.middleware';
 import { FieldController } from '@/modules/field/application/field.controller';
 import { FieldService } from '@/modules/field/application/field.service';
+import { CreateFootballFieldUseCase } from '@/modules/field/application/create-football-field.usecase';
 import {
   CreateFieldImageDto,
   FieldDto,
@@ -13,14 +14,29 @@ import {
   UpdateFieldImageDto,
   UpdateFieldStatusDto,
 } from '@/modules/field/dto/field.dto';
+import { CreateFootballFieldCompleteDto } from '@/modules/field/dto/create-field-complete.dto';
 import { PrismaFieldRepository } from '@/modules/field/infrastructure/prisma-field.repository';
+import { PrismaSubFieldRepository } from '@/modules/sub_field/infrastructure/prisma-subfield.repository';
+import { PrismaOperatingHourRepository } from '@/modules/operating_hour/infrastructure/prisma-operating-hour.repository';
+import { PrismaPriceRuleRepository } from '@/modules/price_rule/infrastructure/prisma-price-rule.repository';
 import { UserRole } from '@prisma/client';
 import { Router } from 'express';
 
 const fieldRouter = Router();
 const fieldRepository = new PrismaFieldRepository(prisma);
+const subFieldRepository = new PrismaSubFieldRepository(prisma);
+const operatingHourRepository = new PrismaOperatingHourRepository(prisma);
+const priceRuleRepository = new PrismaPriceRuleRepository(prisma);
 const fieldService = new FieldService(fieldRepository);
-const fieldController = new FieldController(fieldService);
+const createFootballFieldUseCase = new CreateFootballFieldUseCase(
+  prisma,
+  fieldRepository,
+  subFieldRepository,
+  operatingHourRepository,
+  priceRuleRepository,
+  fieldService,
+);
+const fieldController = new FieldController(fieldService, createFootballFieldUseCase);
 
 fieldRouter.post(
   '/create',
@@ -98,4 +114,22 @@ fieldRouter.get(
   '/active',
   asyncHandler(fieldController.findFieldActiveStatus.bind(fieldController)),
 );
+
+fieldRouter.post(
+  '/upload',
+  authenticate,
+  authorize(UserRole.OWNER),
+  upload.single('image'),
+  asyncHandler(fieldController.upload.bind(fieldController)),
+);
+
+// ── Aggregate endpoint ────────────────────────────────────────────
+fieldRouter.post(
+  '/create-complete',
+  authenticate,
+  authorize(UserRole.OWNER),
+  validateDto(CreateFootballFieldCompleteDto),
+  asyncHandler(fieldController.createFieldComplete.bind(fieldController)),
+);
+
 export default fieldRouter;

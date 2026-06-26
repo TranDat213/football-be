@@ -1,7 +1,7 @@
-import { FieldYard, FootballField } from '@prisma/client';
+import { FieldYard, FootballField, Prisma, PrismaClient, YardStatus, YardType } from '@prisma/client';
 import { ISubFieldRepository } from '../domain/subfield.repository';
 import { CreateFieldYardDto, UpdateFieldYardDto } from '../dto/subfield.dto';
-import { PrismaClient } from '@prisma/client/extension';
+import { YardCompleteDto } from '@/modules/field/dto/create-field-complete.dto';
 
 export class PrismaSubFieldRepository implements ISubFieldRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -50,7 +50,7 @@ export class PrismaSubFieldRepository implements ISubFieldRepository {
     });
   }
 
-  async getSubfield(id: string): Promise<FieldYard> {
+  async getSubfield(id: string): Promise<FieldYard | null> {
     return await this.prisma.fieldYard.findUnique({
       where: {
         id: id,
@@ -72,7 +72,7 @@ export class PrismaSubFieldRepository implements ISubFieldRepository {
     });
   }
 
-  async findFieldByFieldId(field_id: string): Promise<FootballField> {
+  async findFieldByFieldId(field_id: string): Promise<FootballField | null> {
     return await this.prisma.footballField.findUnique({
       where: {
         id: field_id,
@@ -87,7 +87,7 @@ export class PrismaSubFieldRepository implements ISubFieldRepository {
   ): Promise<FieldYard[]> {
     return await this.prisma.fieldYard.findMany({
       where: {
-        type: type,
+        type: type as YardType,
         footballFieldId: field_id,
         deletedAt: null,
       },
@@ -112,11 +112,46 @@ export class PrismaSubFieldRepository implements ISubFieldRepository {
     });
   }
 
-  async findFieldByOwnerId(ownerId: string): Promise<FootballField> {
+  async findFieldByOwnerId(ownerId: string): Promise<FootballField | null> {
     return await this.prisma.footballField.findFirst({
       where: {
         ownerId: ownerId,
         deletedAt: null,
+      },
+    });
+  }
+
+  // ── Transaction-aware methods ──────────────────────────────────────────────
+
+  async findSubfieldByTypeTx(
+    tx: Prisma.TransactionClient,
+    type: YardType,
+    footballFieldId: string,
+  ): Promise<FieldYard[]> {
+    return await tx.fieldYard.findMany({
+      where: {
+        type,
+        footballFieldId,
+        deletedAt: null,
+      },
+    });
+  }
+
+  async createSubfieldTx(
+    tx: Prisma.TransactionClient,
+    footballFieldId: string,
+    data: Pick<YardCompleteDto, 'name' | 'type'>,
+    code: string,
+  ): Promise<FieldYard> {
+    return await tx.fieldYard.create({
+      data: {
+        name: data.name,
+        footballFieldId,
+        type: data.type,
+        code,
+        status: YardStatus.ACTIVE,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
     });
   }

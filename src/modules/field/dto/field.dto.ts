@@ -19,7 +19,8 @@ export class FieldDto {
   name!: string;
 
   @IsString()
-  description!: string;
+  @IsOptional()
+  description?: string;
 
   @IsString()
   address!: string;
@@ -31,7 +32,8 @@ export class FieldDto {
   district!: string;
 
   @IsString()
-  ward!: string;
+  @IsOptional()
+  ward?: string;
 
   @IsNumber()
   @IsOptional()

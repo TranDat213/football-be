@@ -4,6 +4,7 @@ import {
   FieldImage,
   FieldStatus,
   FootballField,
+  Prisma,
   PrismaClient,
   User,
 } from '@prisma/client';
@@ -13,6 +14,7 @@ import {
   UpdateFieldDto,
   UpdateFieldImageDto,
 } from '../dto/field.dto';
+import { FieldImageCompleteDto } from '../dto/create-field-complete.dto';
 
 export class PrismaFieldRepository implements IFieldRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -55,6 +57,47 @@ export class PrismaFieldRepository implements IFieldRepository {
   ): Promise<FootballField[]> {
     return await this.prisma.footballField.findMany({
       where: { ownerId: ownerId, deletedAt: null },
+      include: {
+        yards: {
+          where: {
+            deletedAt: null,
+          },
+          include: {
+            operatingHours: {
+              where: {
+                deletedAt: null,
+              },
+              orderBy: {
+                dayOfWeek: 'asc',
+              },
+            },
+            priceRules: {
+              where: {
+                deletedAt: null,
+              },
+              orderBy: [
+                {
+                  specialDate: 'asc',
+                },
+                {
+                  dayOfWeek: 'asc',
+                },
+                {
+                  startTime: 'asc',
+                },
+              ],
+            },
+          },
+        },
+        images: {
+          where: {
+            deletedAt: null,
+          },
+          orderBy: {
+            sortOrder: 'asc',
+          },
+        },
+      },
       skip: (page - 1) * limit,
       take: limit,
       orderBy: { createdAt: 'desc' },
@@ -116,11 +159,43 @@ export class PrismaFieldRepository implements IFieldRepository {
     return await this.prisma.footballField.findUnique({
       where: { id: fieldId },
       include: {
-        images: true,
         yards: {
+          where: {
+            deletedAt: null,
+          },
           include: {
-            priceRules: true,
-            operatingHours: true,
+            operatingHours: {
+              where: {
+                deletedAt: null,
+              },
+              orderBy: {
+                dayOfWeek: 'asc',
+              },
+            },
+            priceRules: {
+              where: {
+                deletedAt: null,
+              },
+              orderBy: [
+                {
+                  specialDate: 'asc',
+                },
+                {
+                  dayOfWeek: 'asc',
+                },
+                {
+                  startTime: 'asc',
+                },
+              ],
+            },
+          },
+        },
+        images: {
+          where: {
+            deletedAt: null,
+          },
+          orderBy: {
+            sortOrder: 'asc',
           },
         },
       },
@@ -214,7 +289,6 @@ export class PrismaFieldRepository implements IFieldRepository {
   }
 
   async getAvailability(fieldId: string, date: Date): Promise<any> {
-
     return await this.prisma.fieldYard.findMany({
       where: {
         footballFieldId: fieldId,
@@ -227,16 +301,16 @@ export class PrismaFieldRepository implements IFieldRepository {
             bookingDate: date,
             status: {
               in: ['PENDING', 'CONFIRMED'],
-              },
+            },
             deletedAt: null,
           },
           select: {
             startTime: true,
-            endTime:true,
+            endTime: true,
           },
         },
         priceRules: {
-          where: {deletedAt: null},
+          where: { deletedAt: null },
           select: {
             dayOfWeek: true,
             specialDate: true,
@@ -245,13 +319,10 @@ export class PrismaFieldRepository implements IFieldRepository {
             price: true,
             label: true,
           },
-          orderBy: [
-            {specialDate: 'asc'},
-            {startTime: 'asc'},
-          ],
+          orderBy: [{ specialDate: 'asc' }, { startTime: 'asc' }],
         },
         operatingHours: {
-          where: {deletedAt: null},
+          where: { deletedAt: null },
           select: {
             dayOfWeek: true,
             openTime: true,
@@ -286,6 +357,63 @@ export class PrismaFieldRepository implements IFieldRepository {
   async findBySlug(slug: string): Promise<FootballField | null> {
     return await this.prisma.footballField.findUnique({
       where: { slug: slug, deletedAt: null },
+    });
+  }
+
+  // ── Transaction-aware methods ──────────────────────────────────────────────
+
+  async createFieldTx(
+    tx: Prisma.TransactionClient,
+    ownerId: string,
+    data: Pick<FieldDto, 'name' | 'description' | 'address' | 'province' | 'district' | 'ward' | 'latitude' | 'longitude'> & {
+      categoryId: string;
+      openTime?: string;
+      closeTime?: string;
+    },
+    slug: string,
+  ): Promise<FootballField> {
+    return await tx.footballField.create({
+      data: {
+        ownerId,
+        categoryId: data.categoryId,
+        name: data.name,
+        description: data.description,
+        address: data.address,
+        province: data.province,
+        district: data.district,
+        ward: data.ward,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        openTime: data.openTime
+          ? new Date(`1970-01-01T${data.openTime}:00Z`)
+          : null,
+        closeTime: data.closeTime
+          ? new Date(`1970-01-01T${data.closeTime}:00Z`)
+          : null,
+        status: FieldStatus.PENDING,
+        slug,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async createFieldImagesTx(
+    tx: Prisma.TransactionClient,
+    fieldId: string,
+    images: FieldImageCompleteDto[],
+  ): Promise<Prisma.BatchPayload> {
+    if (images.length === 0) return { count: 0 };
+    return await tx.fieldImage.createMany({
+      data: images.map((img) => ({
+        footballFieldId: fieldId,
+        url: img.url,
+        publicId: null,
+        isCover: img.isCover,
+        sortOrder: img.sortOrder,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })),
     });
   }
 }

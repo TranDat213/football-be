@@ -230,6 +230,18 @@ export class FieldService {
   }
   }
 
+  async uploadImage(imageFile: Express.Multer.File): Promise<{ url: string; publicId: string }> {
+    const uploadedImage = await uploadToCloudinary(
+      imageFile.buffer,
+      imageFile.originalname,
+      FolderType.IMAGES,
+    );
+    if (!uploadedImage?.secureUrl || !uploadedImage?.publicId) {
+      throw new BadRequestException('Failed to upload image');
+    }
+    return { url: uploadedImage.secureUrl, publicId: uploadedImage.publicId };
+  }
+
   async updateFieldImage(
     fieldImageId: string,
     data: UpdateFieldImageDto,

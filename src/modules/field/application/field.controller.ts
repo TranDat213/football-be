@@ -7,10 +7,16 @@ import {
   UpdateFieldImageDto,
   UpdateFieldStatusDto,
 } from '../dto/field.dto';
+import { CreateFootballFieldUseCase } from './create-football-field.usecase';
+import { BadRequestException } from '@/utils/app-error';
+import { CreateFootballFieldCompleteDto } from '../dto/create-field-complete.dto';
 import 'multer';
 
 export class FieldController {
-  constructor(private readonly fieldService: FieldService) {}
+  constructor(
+    private readonly fieldService: FieldService,
+    private readonly createFootballFieldUseCase?: CreateFootballFieldUseCase,
+  ) {}
 
   async createField(req: Request, res: Response, _next: NextFunction) {
     const ownerId = req.user?.id as string;
@@ -78,6 +84,18 @@ export class FieldController {
       .json({ message: 'Field image created successfully', data: fieldImage });
   }
 
+  async upload(req: Request, res: Response, _next: NextFunction) {
+    const imageFile = req.file as Express.Multer.File;
+    if (!imageFile) {
+      throw new BadRequestException('No image file provided');
+    }
+    const result = await this.fieldService.uploadImage(imageFile);
+    return res.status(201).json({
+      message: 'Image uploaded successfully',
+      data: result,
+    });
+  }
+
   async updateFieldImage(req: Request, res: Response, _next: NextFunction) {
     const fieldImageId = req.params.id as string;
     const data = req.body as UpdateFieldImageDto;
@@ -131,5 +149,20 @@ export class FieldController {
     return res
       .status(200)
       .json({ message: 'Fields found successfully', data: fields });
+  }
+
+  // ── Aggregate endpoint ─────────────────────────────────────────────
+
+  async createFieldComplete(req: Request, res: Response, _next: NextFunction) {
+    if (!this.createFootballFieldUseCase) {
+      return res.status(500).json({ message: 'UseCase not configured' });
+    }
+    const ownerId = req.user?.id as string;
+    const dto = req.body as CreateFootballFieldCompleteDto;
+    const result = await this.createFootballFieldUseCase.execute(ownerId, dto);
+    return res.status(201).json({
+      message: 'Football field created successfully with all related data',
+      data: result,
+    });
   }
 }

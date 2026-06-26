@@ -1,6 +1,7 @@
-import { PrismaClient, FieldOperatingHour } from '@prisma/client';
+import { PrismaClient, FieldOperatingHour, Prisma } from '@prisma/client';
 import { IOperatingHourRepository } from '../domain/operating-hour.repository';
 import { CreateFieldOperatingHourDto, UpdateFieldOperatingHourDto } from '../dto/operating-hour.dto';
+import { OperatingHourCompleteDto } from '@/modules/field/dto/create-field-complete.dto';
 
 function timeStringToDate(time: string): Date {
   const [hours, minutes] = time.split(':').map(Number);
@@ -85,5 +86,25 @@ export class PrismaOperatingHourRepository implements IOperatingHourRepository {
       where.id = { not: excludeId };
     }
     return this.prisma.fieldOperatingHour.findFirst({ where });
+  }
+
+  // ── Transaction-aware methods ──────────────────────────────────────────────
+
+  async createManyOperatingHoursTx(
+    tx: Prisma.TransactionClient,
+    fieldYardId: string,
+    items: OperatingHourCompleteDto[],
+  ): Promise<Prisma.BatchPayload> {
+    if (items.length === 0) return { count: 0 };
+    return await tx.fieldOperatingHour.createMany({
+      data: items.map((item) => ({
+        fieldYardId,
+        dayOfWeek: item.dayOfWeek,
+        openTime: timeStringToDate(item.openTime),
+        closeTime: timeStringToDate(item.closeTime),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })),
+    });
   }
 }

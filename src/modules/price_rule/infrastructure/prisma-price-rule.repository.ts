@@ -1,6 +1,7 @@
-import { PrismaClient, FieldPriceRule } from '@prisma/client';
+import { PrismaClient, FieldPriceRule, Prisma } from '@prisma/client';
 import { IPriceRuleRepository } from '../domain/price-rule.repository';
 import { CreateFieldPriceRuleDto, UpdateFieldPriceRuleDto } from '../dto/price-rule.dto';
+import { PriceRuleCompleteDto } from '@/modules/field/dto/create-field-complete.dto';
 
 function timeStringToDate(time: string): Date {
   const [hours, minutes] = time.split(':').map(Number);
@@ -107,5 +108,28 @@ export class PrismaPriceRuleRepository implements IPriceRuleRepository {
     }
 
     return this.prisma.fieldPriceRule.findMany({ where });
+  }
+
+  // ── Transaction-aware methods ──────────────────────────────────────────────
+
+  async createManyPriceRulesTx(
+    tx: Prisma.TransactionClient,
+    fieldYardId: string,
+    items: PriceRuleCompleteDto[],
+  ): Promise<Prisma.BatchPayload> {
+    if (items.length === 0) return { count: 0 };
+    return await tx.fieldPriceRule.createMany({
+      data: items.map((item) => ({
+        fieldYardId,
+        dayOfWeek: item.dayOfWeek ?? null,
+        specialDate: item.specialDate ? new Date(item.specialDate) : null,
+        startTime: timeStringToDate(item.startTime),
+        endTime: timeStringToDate(item.endTime),
+        price: item.price,
+        label: item.label ?? null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })),
+    });
   }
 }
