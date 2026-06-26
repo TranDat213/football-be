@@ -338,7 +338,7 @@ export class PrismaFieldRepository implements IFieldRepository {
     limit: number,
   ): Promise<FootballField[]> {
     return await this.prisma.footballField.findMany({
-      where: { status: 'ACTIVE', deletedAt: null },
+      where: { status: FieldStatus.ACTIVE, deletedAt: null },
       skip: (page - 1) * limit,
       take: limit,
       orderBy: { createdAt: 'desc' },
@@ -354,6 +354,39 @@ export class PrismaFieldRepository implements IFieldRepository {
     });
   }
 
+  async findFieldPendingStatus(
+    page: number,
+    limit: number,
+  ): Promise<FootballField[]> {
+    return await this.prisma.footballField.findMany({
+      where: { status: FieldStatus.PENDING, deletedAt: null },
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        images: true,
+        yards: {
+          include: {
+            priceRules: true,
+            operatingHours: true,
+          },
+        },
+      },
+    });
+  }
+
+  async getFieldStatics(): Promise<any> {
+    return await this.prisma.footballField.groupBy({
+      by: ['status'],
+      where: {
+        deletedAt: null,
+      },
+      _count: {
+        _all: true,
+      },
+    });
+  }
+
   async findBySlug(slug: string): Promise<FootballField | null> {
     return await this.prisma.footballField.findUnique({
       where: { slug: slug, deletedAt: null },
@@ -365,7 +398,17 @@ export class PrismaFieldRepository implements IFieldRepository {
   async createFieldTx(
     tx: Prisma.TransactionClient,
     ownerId: string,
-    data: Pick<FieldDto, 'name' | 'description' | 'address' | 'province' | 'district' | 'ward' | 'latitude' | 'longitude'> & {
+    data: Pick<
+      FieldDto,
+      | 'name'
+      | 'description'
+      | 'address'
+      | 'province'
+      | 'district'
+      | 'ward'
+      | 'latitude'
+      | 'longitude'
+    > & {
       categoryId: string;
       openTime?: string;
       closeTime?: string;

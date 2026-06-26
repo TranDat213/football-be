@@ -163,4 +163,12 @@ export class BookingService {
   async countTotalBookingByOwner(ownerId: string) {
     return await this.bookingRepository.countTotalBookingByOwner(ownerId);
   }
+
+  async getBookingByDate(date: Date,page:number, limit:number) {
+    return await this.bookingRepository.findBookingByDate(date,page, limit);
+  }
+
+  async countBookingByDate(date: Date) {
+    return await this.bookingRepository.countBookingByDate(date);
+  }
 }

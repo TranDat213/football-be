@@ -36,7 +36,10 @@ const createFootballFieldUseCase = new CreateFootballFieldUseCase(
   priceRuleRepository,
   fieldService,
 );
-const fieldController = new FieldController(fieldService, createFootballFieldUseCase);
+const fieldController = new FieldController(
+  fieldService,
+  createFootballFieldUseCase,
+);
 
 fieldRouter.post(
   '/create',
@@ -45,6 +48,7 @@ fieldRouter.post(
   validateDto(FieldDto),
   asyncHandler(fieldController.createField.bind(fieldController)),
 );
+
 fieldRouter.put(
   '/:id',
   authenticate,
@@ -52,16 +56,19 @@ fieldRouter.put(
   validateDto(UpdateFieldDto),
   asyncHandler(fieldController.updateField.bind(fieldController)),
 );
+
 fieldRouter.delete(
   '/:id',
   authenticate,
   authorize(UserRole.OWNER, UserRole.ADMIN),
   asyncHandler(fieldController.deleteField.bind(fieldController)),
 );
+
 fieldRouter.get(
   '/find/:id',
   asyncHandler(fieldController.findById.bind(fieldController)),
 );
+
 fieldRouter.patch(
   '/status/:id',
   authenticate,
@@ -69,12 +76,35 @@ fieldRouter.patch(
   validateDto(UpdateFieldStatusDto),
   asyncHandler(fieldController.updateFieldStatus.bind(fieldController)),
 );
+
 fieldRouter.get(
   '/owner',
   authenticate,
   authorize(UserRole.OWNER),
   asyncHandler(fieldController.getFieldByOwnerId.bind(fieldController)),
 );
+
+fieldRouter.get(
+  '/:id/availability',
+  asyncHandler(fieldController.getAvailability.bind(fieldController)),
+);
+fieldRouter.get(
+  '/active',
+  asyncHandler(fieldController.findFieldActiveStatus.bind(fieldController)),
+);
+
+fieldRouter.get(
+  '/pending',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  asyncHandler(fieldController.findFieldPendingStatus.bind(fieldController)),
+);
+
+fieldRouter.get(
+  '/statics',
+  asyncHandler(fieldController.getFieldStatics.bind(fieldController)),
+);
+//field images
 
 fieldRouter.post(
   '/image',
@@ -88,7 +118,7 @@ fieldRouter.put(
   '/image/:id',
   authenticate,
   authorize(UserRole.OWNER),
-   upload.single('image'),
+  upload.single('image'),
   validateDto(UpdateFieldImageDto),
   asyncHandler(fieldController.updateFieldImage.bind(fieldController)),
 );
@@ -105,14 +135,6 @@ fieldRouter.get(
 fieldRouter.get(
   '/image/field/:id',
   asyncHandler(fieldController.findFieldImagesByFieldId.bind(fieldController)),
-);
-fieldRouter.get(
-  '/:id/availability',
-  asyncHandler(fieldController.getAvailability.bind(fieldController)),
-);
-fieldRouter.get(
-  '/active',
-  asyncHandler(fieldController.findFieldActiveStatus.bind(fieldController)),
 );
 
 fieldRouter.post(

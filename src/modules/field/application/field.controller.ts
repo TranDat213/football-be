@@ -74,6 +74,22 @@ export class FieldController {
       .json({ message: 'Fields found successfully', data: fields });
   }
 
+  async findFieldPendingStatus(req: Request, res: Response, _next: NextFunction) {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const fields = await this.fieldService.findFieldPendingStatus(page, limit);
+    return res
+      .status(200)
+      .json({ message: 'Fields found successfully', data: fields });
+  }
+
+  async getFieldStatics(req: Request, res: Response, _next: NextFunction) {
+    const statics = await this.fieldService.getFieldStatics();
+    return res
+      .status(200)
+      .json({ message: 'Statics fetched successfully', data: statics });
+  }
+
   async createFieldImage(req: Request, res: Response, _next: NextFunction) {
     const data = req.body as CreateFieldImageDto;
     const ownerId = req.user?.id as string;

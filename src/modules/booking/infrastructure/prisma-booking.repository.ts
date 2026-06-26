@@ -170,4 +170,36 @@ export class PrismaBookingRepository implements IBookingRepository {
       },
     });
   }
+
+  async findBookingByDate(date: Date,page:number, limit:number): Promise<Booking[]> {
+    return await this.prisma.booking.findMany({
+      where: {
+        bookingDate: date,
+        deletedAt: null,
+        status: {
+          in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+        },
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        fieldYard: {
+          include: {
+            footballField: true,
+          },
+        },
+        user: true,
+      },
+    });
+  }
+
+  async countBookingByDate(date: Date): Promise<number> {
+    return await this.prisma.booking.count({
+      where: {
+        bookingDate: date,
+        deletedAt: null,
+      },
+    });
+  }
 }

@@ -61,4 +61,18 @@ bookingRouter.get(
   ),
 );
 
+bookingRouter.get(
+  '/booking-date',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  asyncHandler(bookingController.getBookingByDate.bind(bookingController)),
+);
+
+bookingRouter.get(
+  '/booking-date-count',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  asyncHandler(bookingController.countBookingByDate.bind(bookingController)),
+);
+
 export default bookingRouter;

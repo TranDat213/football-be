@@ -15,4 +15,7 @@ export interface IBookingRepository {
   findPriceRules(yardId: string, date: string): Promise<FieldPriceRule[]>;
   updateStatus(id: string, status: any, paymentStatus?: any): Promise<Booking>;
   countTotalBookingByOwner(ownerId: string): Promise<number>;
+
+  findBookingByDate(date: Date,page:number, limit:number): Promise<Booking[]>;
+  countBookingByDate(date: Date): Promise<number>;
 }

@@ -32,6 +32,8 @@ export interface IFieldRepository {
   ): Promise<FootballField>;
 
   findFieldActiveStatus(page:number,limit:number): Promise<FootballField[]>;
+  findFieldPendingStatus(page:number,limit:number): Promise<FootballField[]>;
+  getFieldStatics(): Promise<any>;
 
   createFieldImage(data: CreateFieldImageDto,imageUrl:string,imagePublicId:string): Promise<FieldImage>;
   updateFieldImage(fieldImageId: string, data: UpdateFieldImageDto,imageUrl:string | null,imagePublicId:string | null ): Promise<FieldImage>;
@@ -60,4 +62,5 @@ export interface IFieldRepository {
     fieldId: string,
     images: FieldImageCompleteDto[],
   ): Promise<Prisma.BatchPayload>;
+
 }

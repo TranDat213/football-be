@@ -75,4 +75,24 @@ export class BookingController {
       data: count,
     });
   }
+
+  async getBookingByDate(req: Request, res: Response, _next: NextFunction) {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const date = new Date(req.query.date as string);
+    const bookings = await this.bookingService.getBookingByDate(date,page, limit);
+    return res.status(200).json({
+      message: 'Danh sách đơn đặt sân hôm nay',
+      data: bookings,
+    });
+  }
+
+  async countBookingByDate(req: Request, res: Response, _next: NextFunction) {
+    const date = new Date(req.query.date as string);
+    const count = await this.bookingService.countBookingByDate(date);
+    return res.status(200).json({
+      message: 'Tổng số đơn đặt sân hôm nay',
+      data: count,
+    });
+  }
 }

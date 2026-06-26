@@ -21,11 +21,7 @@ userRouter.get(
   authenticate,
   asyncHandler(userController.getProfileById.bind(userController)),
 );
-userRouter.get(
-  '/:id',
-  authenticate,
-  asyncHandler(userController.getUserById.bind(userController)),
-);
+
 userRouter.put(
   '/profile',
   authenticate,
@@ -56,4 +52,52 @@ userRouter.post(
   asyncHandler(userController.createOwnerRegister.bind(userController)),
 );
 
+userRouter.get(
+  '/owner-register-pending',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  asyncHandler(userController.getOwnerRegisterPending.bind(userController)),
+);
+
+userRouter.get(
+  '/owner-register-pending-count',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  asyncHandler(userController.countOwnerRegisterPending.bind(userController)),
+);
+
+userRouter.get(
+  '/all-users',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  asyncHandler(userController.getAllUsers.bind(userController)),
+);
+
+userRouter.get(
+  '/all-owners',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  asyncHandler(userController.getAllOwners.bind(userController)),
+);
+
+userRouter.get(
+  '/all-accounts',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  asyncHandler(userController.getAllAccounts.bind(userController)),
+);
+
+userRouter.get(
+  '/statistics',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  asyncHandler(userController.getAccountStatistics.bind(userController)),
+);
+
+
+userRouter.get(
+  '/:id',
+  authenticate,
+  asyncHandler(userController.getUserById.bind(userController)),
+);
 export default userRouter;

@@ -188,6 +188,17 @@ export class FieldService {
     return await this.fieldRepository.findByOwnerId(page, limit, ownerId);
   }
 
+  async findFieldPendingStatus(
+    page: number,
+    limit: number,
+  ): Promise<FootballField[]> {
+    return await this.fieldRepository.findFieldPendingStatus(page, limit);
+  }
+
+  async getFieldStatics(): Promise<any> {
+    return await this.fieldRepository.getFieldStatics();
+  }
+
   // Field Images
   async createFieldImage(
     data: CreateFieldImageDto,
