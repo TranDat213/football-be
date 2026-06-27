@@ -371,6 +371,16 @@ export class PrismaFieldRepository implements IFieldRepository {
             operatingHours: true,
           },
         },
+        owner: {
+          // thêm dòng này
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+          },
+        },
       },
     });
   }

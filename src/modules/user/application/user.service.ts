@@ -3,8 +3,10 @@ import { IUserRepository } from '../domain/user.repository';
 import {
   AddOwnerDto,
   OwnerRegisterDto,
+  UpdateOwnerRegisterStatusDto,
   UpdateProfileDto,
   UpdateRoleDto,
+  UpdateUserStatusDto,
 } from '../dto/user.dto';
 import {
   BadRequestException,
@@ -113,8 +115,8 @@ export class UserService {
 
       const hashedPassword = await bcrypt.hash(data.password || '12345678', 10);
       return await this.userRepository.createOwner({
-        first_name: data.first_name,
-        last_name: data.last_name,
+        firstName: data.firstName,
+        lastName: data.lastName,
         email: data.email,
         phone: data.phone,
         password: hashedPassword,
@@ -145,6 +147,26 @@ export class UserService {
       throw new InternalServerException('Failed to update role');
     }
   }
+
+  async updateStatus(data: UpdateUserStatusDto, user_id: string): Promise<User> {
+    try {
+      if (!user_id) {
+        throw new BadRequestException('User ID is required');
+      }
+      const user = await this.userRepository.getProfileById(user_id);
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+      return await this.userRepository.updateStatus(data, user_id);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerException('Failed to update status');
+    }
+  }
+
+  //ownerregistration
 
   async createOwnerRegister(
     data: OwnerRegisterDto,
@@ -197,6 +219,33 @@ export class UserService {
     }
   }
 
+  async updateOwnerRegisterStatus(id: string, data: UpdateOwnerRegisterStatusDto): Promise<OwnerRegistration> {
+    try {
+      if (!id) {
+        throw new BadRequestException('Owner register ID is required');
+      }
+      const ownerRegister = await this.userRepository.getOwnerRegisterById(id);
+      if (!ownerRegister) {
+        throw new NotFoundException('Owner register not found');
+      }
+      return await this.userRepository.updateOwnerRegisterStatus(id, data);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerException('Failed to update owner register status');
+    }
+  }
+
+  async getOwnerRegisterById(id: string): Promise<OwnerRegistration | null> {
+    try {
+      return await this.userRepository.getOwnerRegisterById(id);
+    } catch (error) {
+      throw new InternalServerException('Failed to get owner register by ID');
+    }
+  }
+
+//get all users
   async getAllUsers(limit: number, page: number): Promise<User[]> {
     try {
       return await this.userRepository.getAllUsers(limit, page);

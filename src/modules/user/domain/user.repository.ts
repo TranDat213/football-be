@@ -2,8 +2,10 @@ import { OwnerRegistration, User } from '@prisma/client';
 import {
   AddOwnerDto,
   OwnerRegisterDto,
+  UpdateOwnerRegisterStatusDto,
   UpdateProfileDto,
   UpdateRoleDto,
+  UpdateUserStatusDto,
 } from '../dto/user.dto';
 
 export interface IUserRepository {
@@ -19,6 +21,7 @@ export interface IUserRepository {
   findProfileByUsername(username: string): Promise<User | null>;
   createOwner(data: AddOwnerDto): Promise<User>;
   updateRole(data: UpdateRoleDto, user_id: string): Promise<User>;
+  updateStatus(data: UpdateUserStatusDto, user_id: string): Promise<User>;
   getAllUsers(limit: number, page: number): Promise<User[]>;
   getAllOwners(limit: number, page: number): Promise<User[]>;
   getAllAccounts(limit: number, page: number): Promise<User[]>;
@@ -28,4 +31,6 @@ export interface IUserRepository {
   countOwnerRegisterPending(): Promise<number>;
 
   createOwnerRegister(data: OwnerRegisterDto): Promise<OwnerRegistration>;
+  updateOwnerRegisterStatus(id: string, data: UpdateOwnerRegisterStatusDto): Promise<OwnerRegistration>;
+  getOwnerRegisterById(id: string): Promise<OwnerRegistration | null>;
 }

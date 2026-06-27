@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { UserService } from './user.service';
 import 'multer';
-import { AddOwnerDto, OwnerRegisterDto, UpdateRoleDto } from '../dto/user.dto';
+import { AddOwnerDto, OwnerRegisterDto, UpdateOwnerRegisterStatusDto, UpdateRoleDto, UpdateUserStatusDto } from '../dto/user.dto';
 export class UserController {
   constructor(private readonly userService: UserService) {}
   async getProfileById(req: Request, res: Response, _next: NextFunction) {
@@ -61,6 +61,18 @@ export class UserController {
     });
   }
 
+  async updateStatus(req: Request, res: Response, _next: NextFunction) {
+    const dto = req.body as UpdateUserStatusDto;
+    const user_id = req.params.id as string;
+    const user = await this.userService.updateStatus(dto, user_id);
+    return res.status(200).json({
+      message: 'Update status successfully',
+      data: {
+        user,
+      },
+    });
+  }
+
   async createOwnerRegister(req: Request, res: Response, _next: NextFunction) {
     const dto = req.body as OwnerRegisterDto;
     const ownerRegistration = await this.userService.createOwnerRegister(dto);
@@ -90,6 +102,29 @@ export class UserController {
       message: 'Count owner register pending successfully',
       data: {
         count,
+      },
+    });
+  }
+
+  async updateOwnerRegisterStatus(req: Request, res: Response, _next: NextFunction) {
+    const dto = req.body as UpdateOwnerRegisterStatusDto;
+    const id = req.params.id as string;
+    const ownerRegistration = await this.userService.updateOwnerRegisterStatus(id, dto);
+    return res.status(200).json({
+      message: 'Update owner register status successfully',
+      data: {
+        ownerRegistration,
+      },
+    });
+  }
+
+  async getOwnerRegisterById(req: Request, res: Response, _next: NextFunction) {
+    const id = req.params.id as string;
+    const ownerRegistration = await this.userService.getOwnerRegisterById(id);
+    return res.status(200).json({
+      message: 'Get owner register by ID successfully',
+      data: {
+        ownerRegistration,
       },
     });
   }

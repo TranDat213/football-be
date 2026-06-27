@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+import { OwnerRegistrationStatus, UserRole, UserStatus } from "@prisma/client";
 import { IsEmail, IsEnum, IsOptional, IsString, Matches } from "class-validator";
 
 export class UpdateProfileDto{
@@ -30,10 +30,10 @@ export class UpdateProfileDto{
 export class AddOwnerDto {
 
   @IsString()
-  first_name!: string;
+  firstName!: string;
 
   @IsString()
-  last_name!: string;
+  lastName!: string;
 
   @IsEmail()
   @IsString()
@@ -55,6 +55,12 @@ export class UpdateRoleDto {
   @IsString()
   @IsEnum(UserRole)
   role!: UserRole;
+}
+
+export class UpdateUserStatusDto {
+  @IsString()
+  @IsEnum(UserStatus)
+  status!: UserStatus;
 }
 
 export class OwnerRegisterDto {
@@ -84,4 +90,10 @@ export class OwnerRegisterDto {
   @IsString()
   address!: string;
 
+}
+
+export class UpdateOwnerRegisterStatusDto {
+  @IsString()
+  @IsEnum(OwnerRegistrationStatus)
+  status!: OwnerRegistrationStatus;
 }

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '@/middleware/async-handler.middleware';
 import { authenticate } from '@/middleware/authenticate.middleware';
 import { validateDto } from '@/middleware/validate-dto.middleware';
-import { AddOwnerDto, OwnerRegisterDto, UpdateProfileDto, UpdateRoleDto } from '@/modules/user/dto/user.dto';
+import { AddOwnerDto, OwnerRegisterDto, UpdateOwnerRegisterStatusDto, UpdateProfileDto, UpdateRoleDto, UpdateUserStatusDto } from '@/modules/user/dto/user.dto';
 import { UserController } from '@/modules/user/application/user.controller';
 import { UserService } from '@/modules/user/application/user.service';
 import { PrismaUserRepository } from '@/modules/user/infrastructure/prisma-user.repository';
@@ -46,6 +46,14 @@ userRouter.patch(
   asyncHandler(userController.updateRole.bind(userController)),
 );
 
+userRouter.patch(
+  '/update-status/:id',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  validateDto(UpdateUserStatusDto),
+  asyncHandler(userController.updateStatus.bind(userController)),
+);
+
 userRouter.post(
   '/owner-register',
   validateDto(OwnerRegisterDto),
@@ -64,6 +72,21 @@ userRouter.get(
   authenticate,
   authorize(UserRole.ADMIN),
   asyncHandler(userController.countOwnerRegisterPending.bind(userController)),
+);
+
+userRouter.patch(
+  '/owner-register-status/:id',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  validateDto(UpdateOwnerRegisterStatusDto),
+  asyncHandler(userController.updateOwnerRegisterStatus.bind(userController)),
+);
+
+userRouter.get(
+  '/owner-register/:id',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  asyncHandler(userController.getOwnerRegisterById.bind(userController)),
 );
 
 userRouter.get(

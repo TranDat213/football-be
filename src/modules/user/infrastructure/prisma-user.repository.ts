@@ -9,8 +9,10 @@ import { IUserRepository } from '../domain/user.repository';
 import {
   AddOwnerDto,
   OwnerRegisterDto,
+  UpdateOwnerRegisterStatusDto,
   UpdateProfileDto,
   UpdateRoleDto,
+  UpdateUserStatusDto,
 } from '../dto/user.dto';
 
 export class PrismaUserRepository implements IUserRepository {
@@ -60,8 +62,8 @@ export class PrismaUserRepository implements IUserRepository {
   async createOwner(data: AddOwnerDto): Promise<User> {
     return await this.prisma.user.create({
       data: {
-        firstName: data.first_name,
-        lastName: data.last_name,
+        firstName: data.firstName,
+        lastName: data.lastName,
         username: data.email,
         email: data.email,
         phone: data.phone,
@@ -82,6 +84,20 @@ export class PrismaUserRepository implements IUserRepository {
       },
     });
   }
+
+  async updateStatus(data: UpdateUserStatusDto, user_id: string): Promise<User> {
+    return await this.prisma.user.update({
+      where: {
+        id: user_id,
+        deletedAt: null,
+      },
+      data: {
+        status: data.status,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
   async createOwnerRegister(
     data: OwnerRegisterDto,
   ): Promise<OwnerRegistration> {
@@ -190,6 +206,28 @@ export class PrismaUserRepository implements IUserRepository {
     return await this.prisma.ownerRegistration.count({
       where: {
         status: OwnerRegistrationStatus.PENDING,
+        deletedAt: null,
+      },
+    });
+  }
+
+  async updateOwnerRegisterStatus(id: string, data: UpdateOwnerRegisterStatusDto): Promise<OwnerRegistration> {
+    return await this.prisma.ownerRegistration.update({
+      where: {
+        id,
+        deletedAt: null,
+      },
+      data: {
+        status: data.status,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async getOwnerRegisterById(id: string): Promise<OwnerRegistration | null> {
+    return await this.prisma.ownerRegistration.findUnique({
+      where: {
+        id,
         deletedAt: null,
       },
     });
