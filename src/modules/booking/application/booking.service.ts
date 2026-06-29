@@ -1,11 +1,13 @@
 import { BookingStatus, PaymentStatus, PrismaClient } from '@prisma/client';
 import {
   BadRequestException,
+  ForbiddenException,
   NotFoundException,
 } from '../../../utils/app-error';
 import { IBookingRepository } from '../domain/booking.repository';
 import { CreateBookingDto } from '../dto/booking.dto';
 import { EmailService } from '../infrastructure/email.service';
+import { RefundService } from '../../payment/application/refund.service';
 import { format } from 'date-fns';
 
 export class BookingService {
@@ -13,6 +15,7 @@ export class BookingService {
     private readonly bookingRepository: IBookingRepository,
     private readonly emailService: EmailService,
     private readonly prisma: PrismaClient,
+    private readonly refundService?: RefundService,
   ) {}
 
   async createBooking(userId: string, data: CreateBookingDto) {
@@ -58,65 +61,43 @@ export class BookingService {
     });
   }
 
-  async completePayment(bookingId: string, vnpParams: any) {
-    return await this.prisma.$transaction(async (tx) => {
-      // 1. Get booking
-      const booking = await tx.booking.findUnique({
-        where: { id: bookingId },
-        include: {
-          user: true,
-          fieldYard: { include: { footballField: true } },
-        },
-      });
+  /**
+   * Cancel a booking. Validates the user owns it, then:
+   * - Sets booking status = CANCELLED
+   * - If paymentStatus = PAID, triggers refund creation (sets REFUND_PENDING)
+   */
+  async cancelBooking(bookingId: string, userId: string, reason?: string) {
+    const booking = await this.bookingRepository.findById(bookingId);
 
-      if (!booking) throw new NotFoundException('Booking not found');
+    if (!booking) throw new NotFoundException('Không tìm thấy đơn đặt sân');
 
-      // 2. Update Booking & Payment
-      await tx.booking.update({
-        where: { id: bookingId },
-        data: {
-          status: BookingStatus.CONFIRMED,
-          paymentStatus: PaymentStatus.PAID,
-        },
-      });
+    if (booking.userId !== userId) {
+      throw new ForbiddenException('Bạn không có quyền huỷ đơn này');
+    }
 
-      await tx.payment.create({
-        data: {
-          bookingId: bookingId,
-          transactionCode: vnpParams['vnp_TransactionNo'],
-          paymentMethod: 'VNPAY',
-          amount: Number(booking.totalPrice),
-          status: PaymentStatus.PAID,
-          paidAt: new Date(),
-          gatewayResponse: vnpParams,
-        },
-      });
+    if (booking.status === BookingStatus.CANCELLED) {
+      throw new BadRequestException('Đơn đặt sân đã được huỷ trước đó');
+    }
 
-      // 3. Create Commission (10%)
-      await tx.commission.create({
-        data: {
-          bookingId,
-          amount: Number(booking.totalPrice) * 0.1,
-          percentage: 10,
-        },
-      });
-
-      // 4. Send Email (Wait for background or do async)
-      this.emailService
-        .sendBookingConfirmation(booking.user.email, {
-          bookingId: booking.id,
-          userName: `${booking.user.firstName} ${booking.user.lastName}`,
-          yardName: `${booking.fieldYard.footballField.name} - ${booking.fieldYard.name}`,
-          date: format(booking.bookingDate, 'dd/MM/yyyy'),
-          time: `${format(booking.startTime, 'HH:mm')} - ${format(booking.endTime, 'HH:mm')}`,
-          totalPrice: Number(booking.totalPrice),
-        })
-        .catch((err) =>
-          console.error('Failed to send confirmation email:', err),
-        );
-
-      return true;
+    // Update booking to cancelled
+    await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        status: BookingStatus.CANCELLED,
+        cancelledAt: new Date(),
+        cancelledReason: reason ?? null,
+      },
     });
+
+    // If booking was paid, initiate refund process
+    if (
+      booking.paymentStatus === PaymentStatus.PAID &&
+      this.refundService
+    ) {
+      await this.refundService.createRefund(bookingId, reason);
+    }
+
+    return { success: true, message: 'Huỷ đặt sân thành công' };
   }
 
   private calculateTotalPrice(

@@ -95,4 +95,13 @@ export class BookingController {
       data: count,
     });
   }
+  async cancelBooking(req: Request, res: Response, _next: NextFunction) {
+    const userId = req.user?.id as string;
+    const bookingId = req.params.id as string;
+    const { reason } = req.body;
+
+    const result = await this.bookingService.cancelBooking(bookingId, userId, reason);
+
+    return res.status(200).json(result);
+  }
 }

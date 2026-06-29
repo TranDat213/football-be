@@ -1,12 +1,14 @@
 import { NextFunction, Request, Response } from 'express';
 import { VNPayService } from './vnpay.service';
-import { BookingService } from '../../booking/application/booking.service';
+import { PaymentService } from './payment.service';
 import { BadRequestException } from '../../../utils/app-error';
+import { BookingService } from '../../booking/application/booking.service';
 
 export class PaymentController {
   constructor(
     private readonly vnpayService: VNPayService,
-    private readonly bookingService: BookingService
+    private readonly paymentService: PaymentService,
+    private readonly bookingService: BookingService,
   ) {}
 
   async createPayment(req: Request, res: Response, _next: NextFunction) {
@@ -24,14 +26,16 @@ export class PaymentController {
     }
 
     if (paymentMethod === 'CASH') {
-      // Just update status to PENDING or stay UNPAID but with note
       return res.status(200).json({ success: true, message: 'Vui lòng thanh toán tại quầy' });
     }
 
-    // Placeholder for MOMO, BANK_TRANSFER
     return res.status(200).json({ success: true, message: `Phương thức ${paymentMethod} đang được phát triển` });
   }
 
+  /**
+   * VNPay IPN handler — called server-to-server by VNPay.
+   * Idempotent: delegates to PaymentService which guards duplicate processing.
+   */
   async handleVNPayIPN(req: Request, res: Response, _next: NextFunction) {
     const vnp_Params = req.query;
     const isValid = this.vnpayService.verifyChecksum(vnp_Params);
@@ -44,12 +48,46 @@ export class PaymentController {
     const responseCode = vnp_Params['vnp_ResponseCode'];
 
     if (responseCode === '00') {
-      // Success: Update DB
-      // We'll need to implement completePayment in BookingService
-      await (this.bookingService as any).completePayment(bookingId, vnp_Params);
+      const result = await this.paymentService.completeVNPayPayment(bookingId, vnp_Params);
+
+      if (result.alreadyProcessed) {
+        return res.status(200).json({ RspCode: '02', Message: 'Order already confirmed' });
+      }
+
       return res.status(200).json({ RspCode: '00', Message: 'Confirm Success' });
     }
 
     return res.status(200).json({ RspCode: '00', Message: 'Payment Failed or Cancelled' });
+  }
+
+  /**
+   * VNPay Return URL handler — browser redirect.
+   * Verifies signature only; does NOT update DB.
+   */
+  async handleVNPayReturn(req: Request, res: Response, _next: NextFunction) {
+    const result = this.paymentService.handleReturnUrl(req.query);
+    return res.status(200).json({ success: result.success, data: result });
+  }
+
+  /**
+   * GET /payments/:bookingId — authenticated user.
+   */
+  async getPaymentByBookingId(req: Request, res: Response, _next: NextFunction) {
+    const bookingId = req.params.bookingId as string;
+    const payment = await this.paymentService.getPaymentByBookingId(bookingId);
+    return res.status(200).json({ message: 'Thông tin thanh toán', data: payment });
+  }
+
+  /**
+   * GET /payments/admin/all — admin only.
+   */
+  async getAllPaymentsAdmin(req: Request, res: Response, _next: NextFunction) {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const status = req.query.status as string | undefined;
+    const search = req.query.search as string | undefined;
+
+    const result = await this.paymentService.getAllPaymentsAdmin({ page, limit, status, search });
+    return res.status(200).json({ message: 'Danh sách thanh toán', ...result });
   }
 }

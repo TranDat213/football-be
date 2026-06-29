@@ -3,6 +3,7 @@ import { BookingController } from '../modules/booking/application/booking.contro
 import { BookingService } from '../modules/booking/application/booking.service';
 import { PrismaBookingRepository } from '../modules/booking/infrastructure/prisma-booking.repository';
 import { EmailService } from '../modules/booking/infrastructure/email.service';
+import { RefundService } from '../modules/payment/application/refund.service';
 import prisma from '../lib/prisma';
 import { authenticate } from '../middleware/authenticate.middleware';
 import { authorize } from '../middleware/authorize.middlerware';
@@ -16,10 +17,12 @@ const bookingRouter = Router();
 // Dependencies injection
 const bookingRepository = new PrismaBookingRepository(prisma);
 const emailService = new EmailService();
+const refundService = new RefundService(prisma);
 const bookingService = new BookingService(
   bookingRepository,
   emailService,
   prisma,
+  refundService,
 );
 const bookingController = new BookingController(bookingService);
 
@@ -30,6 +33,12 @@ bookingRouter.post(
   authorize(UserRole.USER),
   validateDto(CreateBookingDto),
   asyncHandler(bookingController.createBooking.bind(bookingController)),
+);
+
+bookingRouter.post(
+  '/:id/cancel',
+  authenticate,
+  asyncHandler(bookingController.cancelBooking.bind(bookingController)),
 );
 
 bookingRouter.get(
