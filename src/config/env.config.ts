@@ -21,4 +21,9 @@ export const Env = {
 
     OTP_EXPIRES: getEnv('OTP_EXPIRES', '60000'),
     OTP_COOLDOWN: getEnv('OTP_COOLDOWN', '60000'),
+
+    VNP_TMN_CODE: getEnv('VNP_TMN_CODE', 'PLACEHOLDER'),
+    VNP_HASH_SECRET: getEnv('VNP_HASH_SECRET', 'PLACEHOLDER'),
+    VNP_URL: getEnv('VNP_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'),
+    VNP_RETURN_URL: getEnv('VNP_RETURN_URL', 'http://localhost:3000/payment/callback'),
 } as const;
