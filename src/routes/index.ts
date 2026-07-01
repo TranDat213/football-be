@@ -10,6 +10,7 @@ import settlementRouter from './settlement.route';
 import { operatingHourRouter } from './operating-hour.route';
 import { priceRuleRouter } from './price-rule.route';
 import fieldYardRouter from './field-yard.route';
+import chatRouter from './chat.route';
 
 const routers = Router();
 
@@ -24,4 +25,5 @@ routers.use('/settlements', settlementRouter);
 routers.use('/operating-hours', operatingHourRouter);
 routers.use('/price-rules', priceRuleRouter);
 routers.use('/field-yards', fieldYardRouter);
+routers.use('/chat', chatRouter);
 export default routers;

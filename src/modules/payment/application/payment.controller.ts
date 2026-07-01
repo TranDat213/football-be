@@ -37,35 +37,15 @@ export class PaymentController {
    * Idempotent: delegates to PaymentService which guards duplicate processing.
    */
   async handleVNPayIPN(req: Request, res: Response, _next: NextFunction) {
-    const vnp_Params = req.query;
-    const isValid = this.vnpayService.verifyChecksum(vnp_Params);
-
-    if (!isValid) {
-      return res.status(200).json({ RspCode: '97', Message: 'Checksum failed' });
-    }
-
-    const bookingId = vnp_Params['vnp_TxnRef'] as string;
-    const responseCode = vnp_Params['vnp_ResponseCode'];
-
-    if (responseCode === '00') {
-      const result = await this.paymentService.completeVNPayPayment(bookingId, vnp_Params);
-
-      if (result.alreadyProcessed) {
-        return res.status(200).json({ RspCode: '02', Message: 'Order already confirmed' });
-      }
-
-      return res.status(200).json({ RspCode: '00', Message: 'Confirm Success' });
-    }
-
-    return res.status(200).json({ RspCode: '00', Message: 'Payment Failed or Cancelled' });
+    const result = await this.paymentService.handleReturnUrl(req.query);
+    return res.status(200).json({ success: result.success, data: result });
   }
 
   /**
-   * VNPay Return URL handler — browser redirect.
-   * Verifies signature only; does NOT update DB.
+   * Browser redirect from VNPay (public, verify only)
    */
   async handleVNPayReturn(req: Request, res: Response, _next: NextFunction) {
-    const result = this.paymentService.handleReturnUrl(req.query);
+    const result = await this.paymentService.handleReturnUrl(req.query);
     return res.status(200).json({ success: result.success, data: result });
   }
 

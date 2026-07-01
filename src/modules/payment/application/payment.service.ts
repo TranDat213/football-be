@@ -1,5 +1,8 @@
 import { PaymentStatus, PrismaClient } from '@prisma/client';
-import { NotFoundException, BadRequestException } from '../../../utils/app-error';
+import {
+  NotFoundException,
+  BadRequestException,
+} from '../../../utils/app-error';
 import { EmailService } from '../../booking/infrastructure/email.service';
 import { VNPayService } from './vnpay.service';
 import { format } from 'date-fns';
@@ -14,7 +17,10 @@ export class PaymentService {
   /**
    * Called by IPN handler. Idempotent: guards against duplicate processing.
    */
-  async completeVNPayPayment(bookingId: string, vnpParams: any): Promise<{ alreadyProcessed: boolean }> {
+  async completeVNPayPayment(
+    bookingId: string,
+    vnpParams: any,
+  ): Promise<{ alreadyProcessed: boolean }> {
     return await this.prisma.$transaction(async (tx) => {
       // 1. Get booking with lock
       const booking = await tx.booking.findUnique({
@@ -63,7 +69,9 @@ export class PaymentService {
       });
 
       // 5. Create Commission (10%) if not exists
-      const existingCommission = await tx.commission.findUnique({ where: { bookingId } });
+      const existingCommission = await tx.commission.findUnique({
+        where: { bookingId },
+      });
       if (!existingCommission) {
         await tx.commission.create({
           data: {
@@ -84,7 +92,9 @@ export class PaymentService {
           time: `${format(booking.startTime, 'HH:mm')} - ${format(booking.endTime, 'HH:mm')}`,
           totalPrice: Number(booking.totalPrice),
         })
-        .catch((err) => console.error('Failed to send confirmation email:', err));
+        .catch((err) =>
+          console.error('Failed to send confirmation email:', err),
+        );
 
       return { alreadyProcessed: false };
     });
@@ -94,13 +104,13 @@ export class PaymentService {
    * Verify VNPay return URL signature — does NOT update DB (IPN already did that).
    * Used by the frontend payment result page to display outcome.
    */
-  handleReturnUrl(query: any): {
+  async handleReturnUrl(query: any): Promise<{
     success: boolean;
     responseCode: string;
     bookingId: string;
     amount: number;
     message: string;
-  } {
+  }> {
     const isValid = this.vnpayService.verifyChecksum(query);
 
     if (!isValid) {
@@ -115,13 +125,35 @@ export class PaymentService {
 
     const responseCode = query['vnp_ResponseCode'] as string;
     const bookingId = query['vnp_TxnRef'] as string;
-    const amount = Number(query['vnp_Amount']) / 100; // VNPay sends amount * 100
+    const amount = Number(query['vnp_Amount']) / 100;
 
     if (responseCode === '00') {
-      return { success: true, responseCode, bookingId, amount, message: 'Thanh toán thành công' };
+      // Fallback: đảm bảo tạo payment record kể cả khi IPN chưa/không tới
+      // (idempotent nhờ guard trong completeVNPayPayment)
+      try {
+        await this.completeVNPayPayment(bookingId, query);
+      } catch (err) {
+        console.error(
+          'completeVNPayPayment fallback (return URL) failed:',
+          err,
+        );
+      }
+      return {
+        success: true,
+        responseCode,
+        bookingId,
+        amount,
+        message: 'Thanh toán thành công',
+      };
     }
 
-    return { success: false, responseCode, bookingId, amount, message: 'Thanh toán thất bại hoặc bị huỷ' };
+    return {
+      success: false,
+      responseCode,
+      bookingId,
+      amount,
+      message: 'Thanh toán thất bại hoặc bị huỷ',
+    };
   }
 
   /**
@@ -133,14 +165,26 @@ export class PaymentService {
       include: {
         booking: {
           include: {
-            user: { select: { id: true, firstName: true, lastName: true, email: true } },
-            fieldYard: { include: { footballField: { select: { name: true, address: true } } } },
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+            fieldYard: {
+              include: {
+                footballField: { select: { name: true, address: true } },
+              },
+            },
           },
         },
       },
     });
 
-    if (!payment) throw new NotFoundException('Không tìm thấy thông tin thanh toán');
+    if (!payment)
+      throw new NotFoundException('Không tìm thấy thông tin thanh toán');
 
     return payment;
   }
@@ -168,7 +212,11 @@ export class PaymentService {
       where.OR = [
         { transactionCode: { contains: filter.search, mode: 'insensitive' } },
         { bookingId: { contains: filter.search, mode: 'insensitive' } },
-        { booking: { user: { email: { contains: filter.search, mode: 'insensitive' } } } },
+        {
+          booking: {
+            user: { email: { contains: filter.search, mode: 'insensitive' } },
+          },
+        },
       ];
     }
 
@@ -181,8 +229,17 @@ export class PaymentService {
         include: {
           booking: {
             include: {
-              user: { select: { id: true, firstName: true, lastName: true, email: true } },
-              fieldYard: { include: { footballField: { select: { name: true } } } },
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+              fieldYard: {
+                include: { footballField: { select: { name: true } } },
+              },
               refund: true,
             },
           },
