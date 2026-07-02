@@ -37,12 +37,6 @@ export class VNPayService {
       .update(Buffer.from(signData, 'utf8'))
       .digest('hex');
     vnp_Params['vnp_SecureHash'] = signed;
-    console.log({
-      tmnCode: this.tmnCode,
-      secretKey: this.secretKey,
-      url: this.url,
-      returnUrl: this.returnUrl,
-    });
     return `${this.url}?${qs.stringify(vnp_Params, {
       encode: false,
     })}`;
