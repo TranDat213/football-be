@@ -1,6 +1,7 @@
 import { getEnv } from "../utils/get-env";
 
 export const Env = {
+    CLIENT_URL: getEnv('CLIENT_URL', 'http://localhost:3000'),
     PORT: parseInt(getEnv('PORT', '5000')),
     JWT_EXPIRES_IN: getEnv('JWT_EXPIRES_IN', '7d'),
     JWT_REFRESH_EXPIRES_IN: getEnv('JWT_REFRESH_EXPIRES_IN', '30d'),
