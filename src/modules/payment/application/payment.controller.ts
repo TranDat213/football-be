@@ -37,8 +37,8 @@ export class PaymentController {
    * Idempotent: delegates to PaymentService which guards duplicate processing.
    */
   async handleVNPayIPN(req: Request, res: Response, _next: NextFunction) {
-    const result = await this.paymentService.handleReturnUrl(req.query);
-    return res.status(200).json({ success: result.success, data: result });
+    const result = await this.paymentService.handleIPN(req.query);
+    return res.status(200).json(result); // VNPay expects standard JSON with RspCode/Message
   }
 
   /**

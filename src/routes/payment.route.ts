@@ -15,11 +15,23 @@ import { UserRole } from '@prisma/client';
 
 const paymentRouter = Router();
 
+import { PrismaPaymentRepository } from '../modules/payment/infrastructure/repositories/prisma-payment.repository';
+import { PrismaBookingRepository as PaymentBookingRepository } from '../modules/payment/infrastructure/repositories/prisma-booking.repository';
+import { PrismaCommissionRepository } from '../modules/payment/infrastructure/repositories/prisma-commission.repository';
+import { PrismaTransactionManager } from '../modules/payment/infrastructure/repositories/prisma-transaction.manager';
+
 // Dependencies injection
 const bookingRepository = new PrismaBookingRepository(prisma);
 const emailService = new EmailService();
 const vnpayService = new VNPayService();
-const paymentService = new PaymentService(prisma, vnpayService, emailService);
+
+// Payment Module Specific Repositories
+const paymentBookingRepo = new PaymentBookingRepository(prisma);
+const paymentRepo = new PrismaPaymentRepository(prisma);
+const commissionRepo = new PrismaCommissionRepository(prisma);
+const transactionManager = new PrismaTransactionManager(prisma);
+
+const paymentService = new PaymentService(paymentBookingRepo, paymentRepo, commissionRepo, vnpayService, emailService, transactionManager);
 const refundService = new RefundService(prisma);
 const bookingService = new BookingService(bookingRepository, emailService, prisma, refundService);
 const paymentController = new PaymentController(vnpayService, paymentService, bookingService);
