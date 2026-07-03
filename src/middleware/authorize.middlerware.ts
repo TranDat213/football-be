@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { UnauthorizedException } from '../utils/app-error';
+import { ForbiddenException, UnauthorizedException } from '../utils/app-error';
 import { UserRole } from '@prisma/client';
 
 export const authorize = (...allowedRoles: UserRole[]) => {
@@ -11,7 +11,7 @@ export const authorize = (...allowedRoles: UserRole[]) => {
     }
 
     if (!allowedRoles.includes(user.role)) {
-      return next(new UnauthorizedException("Forbidden: You don't have permission"));
+      return next(new ForbiddenException("Forbidden: You don't have permission"));
     }
 
     next();
