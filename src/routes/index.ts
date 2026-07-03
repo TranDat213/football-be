@@ -11,6 +11,7 @@ import { operatingHourRouter } from './operating-hour.route';
 import { priceRuleRouter } from './price-rule.route';
 import fieldYardRouter from './field-yard.route';
 import chatRouter from './chat.route';
+import casualMatchRouter from './casual-match.route';
 
 const routers = Router();
 
@@ -26,4 +27,5 @@ routers.use('/operating-hours', operatingHourRouter);
 routers.use('/price-rules', priceRuleRouter);
 routers.use('/field-yards', fieldYardRouter);
 routers.use('/chat', chatRouter);
+routers.use('/casual-matches', casualMatchRouter);
 export default routers;
