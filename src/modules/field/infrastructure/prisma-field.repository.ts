@@ -9,7 +9,6 @@ import {
   User,
 } from '@prisma/client';
 import {
-  CreateFieldImageDto,
   FieldDto,
   UpdateFieldDto,
   UpdateFieldImageDto,
@@ -19,36 +18,36 @@ import { FieldImageCompleteDto } from '../dto/create-field-complete.dto';
 export class PrismaFieldRepository implements IFieldRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async createField(
-    ownerId: string,
-    data: FieldDto,
-    slug: string,
-  ): Promise<FootballField> {
-    return await this.prisma.footballField.create({
-      data: {
-        ownerId: ownerId,
-        categoryId: data.category_id,
-        name: data.name,
-        description: data.description,
-        address: data.address,
-        province: data.province,
-        district: data.district,
-        ward: data.ward,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        openTime: data.open_time
-          ? new Date(`1970-01-01T${data.open_time}:00Z`)
-          : null,
-        closeTime: data.close_time
-          ? new Date(`1970-01-01T${data.close_time}:00Z`)
-          : null,
-        status: FieldStatus.PENDING,
-        slug: slug,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
-  }
+  // async createField(
+  //   ownerId: string,
+  //   data: FieldDto,
+  //   slug: string,
+  // ): Promise<FootballField> {
+  //   return await this.prisma.footballField.create({
+  //     data: {
+  //       ownerId: ownerId,
+  //       categoryId: data.category_id,
+  //       name: data.name,
+  //       description: data.description,
+  //       address: data.address,
+  //       province: data.province,
+  //       district: data.district,
+  //       ward: data.ward,
+  //       latitude: data.latitude,
+  //       longitude: data.longitude,
+  //       openTime: data.open_time
+  //         ? new Date(`1970-01-01T${data.open_time}:00Z`)
+  //         : null,
+  //       closeTime: data.close_time
+  //         ? new Date(`1970-01-01T${data.close_time}:00Z`)
+  //         : null,
+  //       status: FieldStatus.PENDING,
+  //       slug: slug,
+  //       createdAt: new Date(),
+  //       updatedAt: new Date(),
+  //     },
+  //   });
+  // }
 
   async findByOwnerId(
     page: number,
@@ -63,29 +62,16 @@ export class PrismaFieldRepository implements IFieldRepository {
             deletedAt: null,
           },
           include: {
-            operatingHours: {
+            timeSlots: {
               where: {
                 deletedAt: null,
               },
-              orderBy: {
-                dayOfWeek: 'asc',
+              include: {
+                priceRule: {
+                  where: { deletedAt: null },
+                },
               },
-            },
-            priceRules: {
-              where: {
-                deletedAt: null,
-              },
-              orderBy: [
-                {
-                  specialDate: 'asc',
-                },
-                {
-                  dayOfWeek: 'asc',
-                },
-                {
-                  startTime: 'asc',
-                },
-              ],
+              orderBy: [{ dayOfWeek: 'asc' }, { sortOrder: 'asc' }, { startTime: 'asc' }],
             },
           },
         },
@@ -164,29 +150,16 @@ export class PrismaFieldRepository implements IFieldRepository {
             deletedAt: null,
           },
           include: {
-            operatingHours: {
+            timeSlots: {
               where: {
                 deletedAt: null,
               },
-              orderBy: {
-                dayOfWeek: 'asc',
+              include: {
+                priceRule: {
+                  where: { deletedAt: null },
+                },
               },
-            },
-            priceRules: {
-              where: {
-                deletedAt: null,
-              },
-              orderBy: [
-                {
-                  specialDate: 'asc',
-                },
-                {
-                  dayOfWeek: 'asc',
-                },
-                {
-                  startTime: 'asc',
-                },
-              ],
+              orderBy: [{ dayOfWeek: 'asc' }, { sortOrder: 'asc' }, { startTime: 'asc' }],
             },
           },
         },
@@ -215,23 +188,23 @@ export class PrismaFieldRepository implements IFieldRepository {
     });
   }
 
-  async createFieldImage(
-    data: CreateFieldImageDto,
-    imageUrl: string,
-    imagePublicId: string,
-  ): Promise<FieldImage> {
-    return await this.prisma.fieldImage.create({
-      data: {
-        footballFieldId: data.footballFieldId,
-        url: imageUrl,
-        publicId: imagePublicId,
-        sortOrder: data.sortOrder,
-        isCover: data.isCover,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
-  }
+  // async createFieldImage(
+  //   data: CreateFieldImageDto,
+  //   imageUrl: string,
+  //   imagePublicId: string,
+  // ): Promise<FieldImage> {
+  //   return await this.prisma.fieldImage.create({
+  //     data: {
+  //       footballFieldId: data.footballFieldId,
+  //       url: imageUrl,
+  //       publicId: imagePublicId,
+  //       sortOrder: data.sortOrder,
+  //       isCover: data.isCover,
+  //       createdAt: new Date(),
+  //       updatedAt: new Date(),
+  //     },
+  //   });
+  // }
 
   async updateFieldImage(
     fieldImageId: string,
@@ -309,25 +282,21 @@ export class PrismaFieldRepository implements IFieldRepository {
             endTime: true,
           },
         },
-        priceRules: {
+        timeSlots: {
           where: { deletedAt: null },
           select: {
             dayOfWeek: true,
-            specialDate: true,
             startTime: true,
             endTime: true,
-            price: true,
             label: true,
+            priceRule: {
+              where: { deletedAt: null },
+              select: {
+                price: true,
+              },
+            },
           },
-          orderBy: [{ specialDate: 'asc' }, { startTime: 'asc' }],
-        },
-        operatingHours: {
-          where: { deletedAt: null },
-          select: {
-            dayOfWeek: true,
-            openTime: true,
-            closeTime: true,
-          },
+          orderBy: [{ dayOfWeek: 'asc' }, { sortOrder: 'asc' }, { startTime: 'asc' }],
         },
       },
     });
@@ -346,8 +315,7 @@ export class PrismaFieldRepository implements IFieldRepository {
         images: true,
         yards: {
           include: {
-            priceRules: true,
-            operatingHours: true,
+            timeSlots: { include: { priceRule: true } },
           },
         },
       },
@@ -367,8 +335,7 @@ export class PrismaFieldRepository implements IFieldRepository {
         images: true,
         yards: {
           include: {
-            priceRules: true,
-            operatingHours: true,
+            timeSlots: { include: { priceRule: true } },
           },
         },
         owner: {
@@ -461,7 +428,7 @@ export class PrismaFieldRepository implements IFieldRepository {
       data: images.map((img) => ({
         footballFieldId: fieldId,
         url: img.url,
-        publicId: null,
+        publicId: img.publicId,
         isCover: img.isCover,
         sortOrder: img.sortOrder,
         createdAt: new Date(),

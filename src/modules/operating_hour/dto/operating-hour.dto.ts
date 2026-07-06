@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import {
   IsInt,
+  IsEnum,
   Max,
   Min,
   IsString,
@@ -11,6 +12,7 @@ import {
   ValidatorConstraintInterface,
   Validate,
 } from 'class-validator';
+import { TimeSlotLabel } from '@prisma/client';
 
 @ValidatorConstraint({ name: 'isBeforeTime', async: false })
 export class IsBeforeTimeConstraint implements ValidatorConstraintInterface {
@@ -28,7 +30,7 @@ export class IsBeforeTimeConstraint implements ValidatorConstraintInterface {
   }
 }
 
-export class CreateFieldOperatingHourDto {
+export class CreateFieldTimeSlotDto {
   @IsInt()
   @Min(0)
   @Max(6)
@@ -36,19 +38,27 @@ export class CreateFieldOperatingHourDto {
 
   @IsString()
   @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'openTime must be a valid time in HH:mm format',
+    message: 'startTime must be a valid time in HH:mm format',
   })
-  @Validate(IsBeforeTimeConstraint, ['closeTime'])
-  openTime!: string;
+  @Validate(IsBeforeTimeConstraint, ['endTime'])
+  startTime!: string;
 
   @IsString()
   @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'closeTime must be a valid time in HH:mm format',
+    message: 'endTime must be a valid time in HH:mm format',
   })
-  closeTime!: string;
+  endTime!: string;
+
+  @IsEnum(TimeSlotLabel)
+  label!: TimeSlotLabel;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  sortOrder?: number;
 }
 
-export class UpdateFieldOperatingHourDto {
+export class UpdateFieldTimeSlotDto {
   @IsInt()
   @Min(0)
   @Max(6)
@@ -57,15 +67,27 @@ export class UpdateFieldOperatingHourDto {
 
   @IsString()
   @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'openTime must be a valid time in HH:mm format',
+    message: 'startTime must be a valid time in HH:mm format',
   })
   @IsOptional()
-  openTime?: string;
+  startTime?: string;
 
   @IsString()
   @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'closeTime must be a valid time in HH:mm format',
+    message: 'endTime must be a valid time in HH:mm format',
   })
   @IsOptional()
-  closeTime?: string;
+  endTime?: string;
+
+  @IsEnum(TimeSlotLabel)
+  @IsOptional()
+  label?: TimeSlotLabel;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  sortOrder?: number;
 }
+
+export { CreateFieldTimeSlotDto as CreateFieldOperatingHourDto };
+export { UpdateFieldTimeSlotDto as UpdateFieldOperatingHourDto };

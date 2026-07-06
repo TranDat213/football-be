@@ -163,6 +163,12 @@ enum PayoutStatus {
   COMPLETED
   FAILED
 }
+
+enum TimeSlotLabel {
+  REGULAR
+  PEAK
+  LATE_NIGHT
+}
 // ─────────────────────────────────────────
 // DOMAIN: USERS
 // ─────────────────────────────────────────
@@ -268,8 +274,7 @@ model FieldYard {
   deletedAt       DateTime?  @map("deleted_at")
 
   footballField  FootballField        @relation(fields: [footballFieldId], references: [id])
-  operatingHours FieldOperatingHour[]
-  priceRules     FieldPriceRule[]
+  timeSlots      FieldTimeSlot[]
   bookings       Booking[]
 
   @@index([footballFieldId])
@@ -293,38 +298,36 @@ model FieldImage {
   @@map("field_images")
 }
 
-model FieldOperatingHour {
-  id          String    @id @default(uuid())
-  fieldYardId String    @map("field_yard_id")
-  dayOfWeek   Int       @map("day_of_week") @db.SmallInt
-  openTime    DateTime  @map("open_time") @db.Time
-  closeTime   DateTime  @map("close_time") @db.Time
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")
+model FieldTimeSlot {
+  id          String        @id @default(uuid())
+  fieldYardId String        @map("field_yard_id")
+  dayOfWeek   Int           @map("day_of_week") @db.SmallInt
+  startTime   DateTime      @map("start_time") @db.Time
+  endTime     DateTime      @map("end_time") @db.Time
+  label       TimeSlotLabel @default(REGULAR)
+  sortOrder   Int           @default(0) @map("sort_order")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  deletedAt   DateTime?     @map("deleted_at")
 
-  fieldYard FieldYard @relation(fields: [fieldYardId], references: [id])
+  fieldYard  FieldYard        @relation(fields: [fieldYardId], references: [id])
+  priceRule  FieldPriceRule?
 
-  @@unique([fieldYardId, dayOfWeek])
-  @@map("field_operating_hours")
+  @@index([fieldYardId, dayOfWeek])
+  @@map("field_time_slots")
 }
 
 model FieldPriceRule {
   id          String    @id @default(uuid())
-  fieldYardId String    @map("field_yard_id")
-  dayOfWeek   Int?      @map("day_of_week") @db.SmallInt
-  startTime   DateTime  @map("start_time") @db.Time
-  endTime     DateTime  @map("end_time") @db.Time
-  specialDate DateTime? @map("special_date") @db.Date
+  timeSlotId  String    @unique @map("time_slot_id")
   price       Decimal   @db.Decimal(12, 2)
-  label       String?   @db.VarChar(100)
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
-  fieldYard FieldYard @relation(fields: [fieldYardId], references: [id])
+  timeSlot FieldTimeSlot @relation(fields: [timeSlotId], references: [id])
 
-  @@index([fieldYardId, dayOfWeek, specialDate])
+  @@index([timeSlotId])
   @@map("field_price_rules")
 }
 

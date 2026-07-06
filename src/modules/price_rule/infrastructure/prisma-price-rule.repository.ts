@@ -1,135 +1,87 @@
 import { PrismaClient, FieldPriceRule, Prisma } from '@prisma/client';
 import { IPriceRuleRepository } from '../domain/price-rule.repository';
-import { CreateFieldPriceRuleDto, UpdateFieldPriceRuleDto } from '../dto/price-rule.dto';
+import {
+  CreateFieldPriceRuleDto,
+  UpdateFieldPriceRuleDto,
+} from '../dto/price-rule.dto';
 import { PriceRuleCompleteDto } from '@/modules/field/dto/create-field-complete.dto';
-
-function timeStringToDate(time: string): Date {
-  const [hours, minutes] = time.split(':').map(Number);
-  const d = new Date();
-  d.setUTCHours(hours, minutes, 0, 0);
-  return d;
-}
 
 export class PrismaPriceRuleRepository implements IPriceRuleRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async checkYardOwnership(yardId: string, ownerId: string): Promise<boolean> {
-    const yard = await this.prisma.fieldYard.findFirst({
+  async checkTimeSlotOwnership(
+    timeSlotId: string,
+    ownerId: string,
+  ): Promise<boolean> {
+    const slot = await this.prisma.fieldTimeSlot.findFirst({
       where: {
-        id: yardId,
+        id: timeSlotId,
         deletedAt: null,
-        footballField: {
-          ownerId: ownerId,
-          deletedAt: null
-        }
-      }
+        fieldYard: {
+          deletedAt: null,
+          footballField: { ownerId, deletedAt: null },
+        },
+      },
     });
-    return !!yard;
+    return !!slot;
   }
 
-  async create(fieldYardId: string, data: CreateFieldPriceRuleDto): Promise<FieldPriceRule> {
+  async create(data: CreateFieldPriceRuleDto): Promise<FieldPriceRule> {
     return this.prisma.fieldPriceRule.create({
       data: {
-        fieldYardId,
-        dayOfWeek: data.dayOfWeek ?? null,
-        specialDate: data.specialDate ? new Date(data.specialDate) : null,
-        startTime: timeStringToDate(data.startTime),
-        endTime: timeStringToDate(data.endTime),
+        timeSlotId: data.timeSlotId,
         price: data.price,
-        label: data.label ?? null,
-      }
+      },
     });
   }
 
-  async update(id: string, data: UpdateFieldPriceRuleDto): Promise<FieldPriceRule> {
-    const updateData: any = {};
-    if (data.dayOfWeek !== undefined) updateData.dayOfWeek = data.dayOfWeek;
-    if (data.specialDate !== undefined) {
-      updateData.specialDate = data.specialDate ? new Date(data.specialDate) : null;
-    }
-    if (data.startTime) updateData.startTime = timeStringToDate(data.startTime);
-    if (data.endTime) updateData.endTime = timeStringToDate(data.endTime);
-    if (data.price !== undefined) updateData.price = data.price;
-    if (data.label !== undefined) updateData.label = data.label;
-
+  async update(
+    id: string,
+    data: UpdateFieldPriceRuleDto,
+  ): Promise<FieldPriceRule> {
     return this.prisma.fieldPriceRule.update({
       where: { id },
-      data: updateData
+      data: {
+        timeSlotId: data.timeSlotId,
+        price: data.price,
+      },
     });
   }
 
   async delete(id: string): Promise<FieldPriceRule> {
     return this.prisma.fieldPriceRule.update({
       where: { id },
-      data: { deletedAt: new Date() }
+      data: { deletedAt: new Date() },
     });
   }
 
   async findById(id: string): Promise<FieldPriceRule | null> {
     return this.prisma.fieldPriceRule.findFirst({
-      where: { id, deletedAt: null }
+      where: { id, deletedAt: null },
+      include: { timeSlot: true },
     });
   }
 
   async findByYardId(fieldYardId: string): Promise<FieldPriceRule[]> {
     return this.prisma.fieldPriceRule.findMany({
-      where: { fieldYardId, deletedAt: null },
-      orderBy: [
-        { specialDate: 'asc' },
-        { dayOfWeek: 'asc' },
-        { startTime: 'asc' }
-      ]
+      where: { deletedAt: null, timeSlot: { fieldYardId, deletedAt: null } },
+      include: { timeSlot: true },
+      orderBy: [{ timeSlot: { dayOfWeek: 'asc' } }],
     });
   }
 
-  async findOverlappingRules(
-    fieldYardId: string, 
-    dayOfWeek: number | null, 
-    specialDate: Date | null, 
-    startTime: Date, 
-    endTime: Date, 
-    excludeId?: string
-  ): Promise<FieldPriceRule[]> {
-    const where: any = {
-      fieldYardId,
-      deletedAt: null,
-      startTime: { lt: endTime },
-      endTime: { gt: startTime }
-    };
-
-    if (dayOfWeek !== null) {
-      where.dayOfWeek = dayOfWeek;
-    } else if (specialDate !== null) {
-      where.specialDate = specialDate;
-    }
-
-    if (excludeId) {
-      where.id = { not: excludeId };
-    }
-
-    return this.prisma.fieldPriceRule.findMany({ where });
-  }
-
-  // ── Transaction-aware methods ──────────────────────────────────────────────
-
-  async createManyPriceRulesTx(
+  async createPriceRuleTx(
     tx: Prisma.TransactionClient,
-    fieldYardId: string,
-    items: PriceRuleCompleteDto[],
-  ): Promise<Prisma.BatchPayload> {
-    if (items.length === 0) return { count: 0 };
-    return await tx.fieldPriceRule.createMany({
-      data: items.map((item) => ({
-        fieldYardId,
-        dayOfWeek: item.dayOfWeek ?? null,
-        specialDate: item.specialDate ? new Date(item.specialDate) : null,
-        startTime: timeStringToDate(item.startTime),
-        endTime: timeStringToDate(item.endTime),
+    timeSlotId: string,
+    item: PriceRuleCompleteDto,
+  ): Promise<FieldPriceRule> {
+    return tx.fieldPriceRule.create({
+      data: {
+        timeSlotId,
         price: item.price,
-        label: item.label ?? null,
         createdAt: new Date(),
         updatedAt: new Date(),
-      })),
+      },
     });
   }
 }

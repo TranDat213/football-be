@@ -8,8 +8,6 @@ import { FieldController } from '@/modules/field/application/field.controller';
 import { FieldService } from '@/modules/field/application/field.service';
 import { CreateFootballFieldUseCase } from '@/modules/field/application/create-football-field.usecase';
 import {
-  CreateFieldImageDto,
-  FieldDto,
   UpdateFieldDto,
   UpdateFieldImageDto,
   UpdateFieldStatusDto,
@@ -41,13 +39,13 @@ const fieldController = new FieldController(
   createFootballFieldUseCase,
 );
 
-fieldRouter.post(
-  '/create',
-  authenticate,
-  authorize(UserRole.OWNER),
-  validateDto(FieldDto),
-  asyncHandler(fieldController.createField.bind(fieldController)),
-);
+// fieldRouter.post(
+//   '/create',
+//   authenticate,
+//   authorize(UserRole.OWNER),
+//   validateDto(FieldDto),
+//   asyncHandler(fieldController.createField.bind(fieldController)),
+// );
 
 fieldRouter.put(
   '/:id',
@@ -106,14 +104,14 @@ fieldRouter.get(
 );
 //field images
 
-fieldRouter.post(
-  '/image',
-  authenticate,
-  authorize(UserRole.OWNER),
-  upload.single('image'),
-  validateDto(CreateFieldImageDto),
-  asyncHandler(fieldController.createFieldImage.bind(fieldController)),
-);
+// fieldRouter.post(
+//   '/image',
+//   authenticate,
+//   authorize(UserRole.OWNER),
+//   upload.single('image'),
+//   validateDto(CreateFieldImageDto),
+//   asyncHandler(fieldController.createFieldImage.bind(fieldController)),
+// );
 fieldRouter.put(
   '/image/:id',
   authenticate,

@@ -133,13 +133,14 @@ export class PrismaBookingRepository implements IBookingRepository {
 
     return await this.prisma.fieldPriceRule.findMany({
       where: {
-        fieldYardId: yardId,
-        OR: [
-          { specialDate: bookingDate },
-          { dayOfWeek: dayOfWeek, specialDate: null },
-        ],
+        timeSlot: {
+          fieldYardId: yardId,
+          dayOfWeek,
+          deletedAt: null,
+        },
         deletedAt: null,
       },
+      include: { timeSlot: true },
     });
   }
 

@@ -6,15 +6,16 @@ import {
   Prisma,
   User,
 } from '@prisma/client';
-import { CreateFieldImageDto, FieldDto, UpdateFieldDto, UpdateFieldImageDto } from '../dto/field.dto';
-import { FieldImageCompleteDto } from '../dto/create-field-complete.dto';
+import { FieldDto, UpdateFieldDto, UpdateFieldImageDto } from '../dto/field.dto';
+import { CreateFootballFieldCompleteDto, FieldImageCompleteDto } from '../dto/create-field-complete.dto';
+import { CreateFootballFieldResult } from '../application/create-football-field.usecase';
 
 export interface IFieldRepository {
-  createField(
-    ownerId: string,
-    data: FieldDto,
-    slug: string,
-  ): Promise<FootballField>;
+  // createField(
+  //   ownerId: string,
+  //   data: FieldDto,
+  //   slug: string,
+  // ): Promise<FootballField>;
   findByOwnerId(page:number, limit:number, ownerId: string): Promise<FootballField[]>;
   findOwner(ownerId: string): Promise<User | null>;
   findCategoryById(categoryId: string): Promise<FieldCategory | null>;
@@ -35,7 +36,7 @@ export interface IFieldRepository {
   findFieldPendingStatus(page:number,limit:number): Promise<FootballField[]>;
   getFieldStatics(): Promise<any>;
 
-  createFieldImage(data: CreateFieldImageDto,imageUrl:string,imagePublicId:string): Promise<FieldImage>;
+  // createFieldImage(data: CreateFieldImageDto,imageUrl:string,imagePublicId:string): Promise<FieldImage>;
   updateFieldImage(fieldImageId: string, data: UpdateFieldImageDto,imageUrl:string | null,imagePublicId:string | null ): Promise<FieldImage>;
   deleteFieldImage(fieldImageId: string): Promise<FieldImage>;
   findFieldImageById(fieldImageId: string): Promise<FieldImage | null>;
@@ -62,5 +63,6 @@ export interface IFieldRepository {
     fieldId: string,
     images: FieldImageCompleteDto[],
   ): Promise<Prisma.BatchPayload>;
+
 
 }
