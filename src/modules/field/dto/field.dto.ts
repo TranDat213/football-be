@@ -102,18 +102,18 @@ export class UpdateFieldStatusDto {
   status!: FieldStatus;
 }
 
-export class CreateFieldImageDto {
-  @IsString()
-  footballFieldId!: string;
+// export class CreateFieldImageDto {
+//   @IsString()
+//   footballFieldId!: string;
 
-  @Type(() => Number)
-  @IsNumber()
-  sortOrder!: number;
+//   @Type(() => Number)
+//   @IsNumber()
+//   sortOrder!: number;
 
-  @Type(() => Boolean)
-  @IsBoolean()
-  isCover!: boolean;
-}
+//   @Type(() => Boolean)
+//   @IsBoolean()
+//   isCover!: boolean;
+// }
 
 export class UpdateFieldImageDto {
 

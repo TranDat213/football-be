@@ -112,8 +112,8 @@ export class BookingService {
     const endTimeObj = new Date(`1970-01-01T${end}:00Z`);
 
     const matchingRule = rules.find((rule) => {
-      const ruleStart = new Date(rule.startTime);
-      const ruleEnd = new Date(rule.endTime);
+      const ruleStart = new Date(rule.timeSlot.startTime);
+      const ruleEnd = new Date(rule.timeSlot.endTime);
       return startTimeObj >= ruleStart && endTimeObj <= ruleEnd;
     });
 

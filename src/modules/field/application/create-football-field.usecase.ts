@@ -8,15 +8,21 @@ import { CreateFootballFieldCompleteDto } from '../dto/create-field-complete.dto
 import { BadRequestException } from '@/utils/app-error';
 import { YARD_CODE_PREFIX } from '@/constants/yard.constant';
 import { YardType } from '@prisma/client';
+import { deleteImageFromCloudinary } from '@/utils/cloudinary';
 
 export interface CreateFootballFieldResult {
   field: any;
   imageCount: number;
   yards: Array<{
     yard: any;
-    operatingHourCount: number;
+    timeSlotCount: number;
     priceRuleCount: number;
   }>;
+}
+
+function toMinute(time: string): number {
+  const [hour, minute] = time.split(':').map(Number);
+  return hour * 60 + minute;
 }
 
 export class CreateFootballFieldUseCase {
@@ -34,7 +40,6 @@ export class CreateFootballFieldUseCase {
     dto: CreateFootballFieldCompleteDto,
   ): Promise<CreateFootballFieldResult> {
     // ── Step 1: Pre-flight checks OUTSIDE the transaction ────────────────────
-    // These are read-only operations and do not need to be inside a tx.
     const owner = await this.fieldRepository.findOwner(ownerId);
     if (!owner) {
       throw new BadRequestException('Owner not found');
@@ -45,101 +50,142 @@ export class CreateFootballFieldUseCase {
       throw new BadRequestException('Category not found');
     }
 
-    // Generate unique slug before the transaction to avoid repeated DB checks inside tx
     const slug = await this.fieldService.generateUniqueSlug(dto.name);
+    this.validateTimeSlots(dto);
 
     // ── Step 2: ONE atomic Prisma transaction ────────────────────────────────
-    // Every repository method below receives `tx` — a shared TransactionClient.
-    // No repository creates a new PrismaClient; all writes share the same connection.
-    // If ANY step throws, Prisma rolls back ALL 5 tables automatically.
-    const result = await this.prisma.$transaction(
-      async (tx: Prisma.TransactionClient) => {
-        // 2a. Create the FootballField
-        const field = await this.fieldRepository.createFieldTx(
-          tx,
-          ownerId,
-          {
-            name: dto.name,
-            description: dto.description ?? undefined,
-            categoryId: dto.categoryId,
-            address: dto.address,
-            province: dto.province,
-            district: dto.district,
-            ward: dto.ward ?? undefined,
-            latitude: dto.latitude,
-            longitude: dto.longitude,
-            openTime: dto.openTime,
-            closeTime: dto.closeTime,
-          },
-          slug,
-        );
-
-        // 2b. Bulk-insert all field images (single round-trip via createMany)
-        const imagesBatch = await this.fieldRepository.createFieldImagesTx(
-          tx,
-          field.id,
-          dto.images,
-        );
-
-        // 2c. Create each yard with its operating hours + price rules
-        const yardResults: CreateFootballFieldResult['yards'] = [];
-
-        for (const yardDto of dto.yards) {
-          // Generate code for this yard type within the same transaction
-          const existingYards = await this.subFieldRepository.findSubfieldByTypeTx(
+    try {
+      const result = await this.prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          // 2a. Create the FootballField
+          const field = await this.fieldRepository.createFieldTx(
             tx,
-            yardDto.type as YardType,
-            field.id,
+            ownerId,
+            {
+              name: dto.name,
+              description: dto.description ?? undefined,
+              categoryId: dto.categoryId,
+              address: dto.address,
+              province: dto.province,
+              district: dto.district,
+              ward: dto.ward ?? undefined,
+              latitude: dto.latitude ?? undefined,
+              longitude: dto.longitude ?? undefined,
+              openTime: dto.openTime,
+              closeTime: dto.closeTime,
+            },
+            slug,
           );
 
-          const maxNumber = existingYards.reduce((max, y) => {
-            const match = y.code.match(/\d+$/);
-            const num = match ? Number(match[0]) : 0;
-            return Math.max(max, num);
-          }, 0);
-
-          const prefix = YARD_CODE_PREFIX[yardDto.type as YardType];
-          const code = `${prefix}_${maxNumber + 1}`;
-
-          const yard = await this.subFieldRepository.createSubfieldTx(
+          // 2b. Bulk-insert all field images
+          const imagesBatch = await this.fieldRepository.createFieldImagesTx(
             tx,
             field.id,
-            { name: yardDto.name, type: yardDto.type as YardType },
-            code,
+            dto.images,
           );
 
-          // Bulk-insert operating hours for this yard (createMany)
-          const hoursBatch =
-            await this.operatingHourRepository.createManyOperatingHoursTx(
+          // 2c. Create each yard with its time slots + one price rule per slot
+          const yardResults: CreateFootballFieldResult['yards'] = [];
+
+          for (const yardDto of dto.yards) {
+            const existingYards = await this.subFieldRepository.findSubfieldByTypeTx(
               tx,
-              yard.id,
-              yardDto.operatingHours,
+              yardDto.type as YardType,
+              field.id,
             );
 
-          // Bulk-insert price rules for this yard (createMany)
-          const rulesBatch =
-            await this.priceRuleRepository.createManyPriceRulesTx(
+            const maxNumber = existingYards.reduce((max, y) => {
+              const match = y.code.match(/\d+$/);
+              const num = match ? Number(match[0]) : 0;
+              return Math.max(max, num);
+            }, 0);
+
+            const prefix = YARD_CODE_PREFIX[yardDto.type as YardType];
+            const code = `${prefix}_${maxNumber + 1}`;
+
+            const yard = await this.subFieldRepository.createSubfieldTx(
               tx,
-              yard.id,
-              yardDto.priceRules,
+              field.id,
+              { name: yardDto.name, type: yardDto.type as YardType },
+              code,
             );
 
-          yardResults.push({
-            yard,
-            operatingHourCount: hoursBatch.count,
-            priceRuleCount: rulesBatch.count,
-          });
+            const timeSlots =
+              await this.operatingHourRepository.createManyOperatingHoursTx(
+                tx,
+                yard.id,
+                yardDto.timeSlots,
+              );
+
+            // Mỗi time slot có đúng 1 price rule (quan hệ 1-1)
+            for (let index = 0; index < timeSlots.length; index += 1) {
+              await this.priceRuleRepository.createPriceRuleTx(
+                tx,
+                timeSlots[index].id,
+                yardDto.timeSlots[index].priceRule,
+              );
+            }
+
+            yardResults.push({
+              yard,
+              timeSlotCount: timeSlots.length,
+              priceRuleCount: timeSlots.length,
+            });
+          }
+
+          return {
+            field,
+            imageCount: imagesBatch.count,
+            yards: yardResults,
+          };
+        },
+        { timeout: 15000 },
+      );
+
+      return result;
+    } catch (error) {
+      // Transaction rollback rồi -> ảnh đã upload Cloudinary trước đó thành rác, cleanup
+      if (dto.images?.length) {
+        await Promise.allSettled(
+          dto.images
+            .filter((img) => img.publicId)
+            .map((img) => deleteImageFromCloudinary(img.publicId!)),
+        );
+      }
+      throw error;
+    }
+  }
+
+  private validateTimeSlots(dto: CreateFootballFieldCompleteDto): void {
+    if (!dto.openTime || !dto.closeTime) return;
+
+    const fieldOpen = toMinute(dto.openTime);
+    const fieldClose = toMinute(dto.closeTime);
+
+    dto.yards.forEach((yard, yardIndex) => {
+      const byDay = new Map<number, Array<{ start: number; end: number; index: number }>>();
+
+      yard.timeSlots.forEach((slot, slotIndex) => {
+        const start = toMinute(slot.startTime);
+        const end = toMinute(slot.endTime);
+
+        if (start >= end) {
+          throw new BadRequestException(`yards.${yardIndex}.timeSlots.${slotIndex}.endTime must be after startTime`);
+        }
+        if (start < fieldOpen || end > fieldClose) {
+          throw new BadRequestException(`yards.${yardIndex}.timeSlots.${slotIndex} must be inside field openTime/closeTime`);
         }
 
-        return {
-          field,
-          imageCount: imagesBatch.count,
-          yards: yardResults,
-        };
-      },
-      { timeout: 15000 }, // generous timeout for large submissions
-    );
-
-    return result;
+        const slots = byDay.get(slot.dayOfWeek) ?? [];
+        const overlap = slots.find((item) => item.start < end && item.end > start);
+        if (overlap) {
+          throw new BadRequestException(
+            `yards.${yardIndex}.timeSlots.${slotIndex} overlaps with timeSlots.${overlap.index}`,
+          );
+        }
+        slots.push({ start, end, index: slotIndex });
+        byDay.set(slot.dayOfWeek, slots);
+      });
+    });
   }
 }

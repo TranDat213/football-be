@@ -5,8 +5,6 @@ import { BadRequestException } from '@/utils/app-error';
 
 export const validateDto = (dtoClass: any, type: 'body' | 'query' | 'params' = 'body') => {
   return async (req: Request, _res: Response, next: NextFunction) => {
-    console.log('dtoClass:', dtoClass);
-    console.log('req.body:', req.body);
     const dto = plainToInstance(dtoClass, req[type]);
     const errors = await validate(dto, {
       whitelist: true,
@@ -17,7 +15,6 @@ export const validateDto = (dtoClass: any, type: 'body' | 'query' | 'params' = '
       const messages = errors
         .map((error) => Object.values(error.constraints || {}).join(', '))
         .join('; ');
-      console.log('❌ Validation errors detail:', JSON.stringify(errors, null, 2));
       throw new BadRequestException(messages);
     }
 

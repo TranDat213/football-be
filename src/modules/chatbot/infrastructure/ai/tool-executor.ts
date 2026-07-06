@@ -58,7 +58,7 @@ export class ToolExecutor {
             status: FieldStatus.ACTIVE,
             yards: args.fieldType ? { some: { type: args.fieldType } } : undefined
           },
-          select: { id: true, name: true, address: true, district: true, yards: { select: { type: true, priceRules: true } } },
+          select: { id: true, name: true, address: true, district: true, yards: { select: { type: true, timeSlots: { include: { priceRule: true } } } } },
           take: 5
         });
         return JSON.stringify(fields);

@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { YardType } from '@prisma/client';
+import { TimeSlotLabel, YardType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayNotEmpty,
@@ -22,7 +22,8 @@ import {
 export class FieldImageCompleteDto {
   @IsString()
   url!: string;
-
+  @IsString()
+  publicId!: string;
   @IsBoolean()
   isCover!: boolean;
 
@@ -31,35 +32,22 @@ export class FieldImageCompleteDto {
   sortOrder!: number;
 }
 
-export class OperatingHourCompleteDto {
+export class PriceRuleCompleteDto {
+
+  @IsNumber()
+  @Min(0)
+  price!: number;
+}
+
+export class FieldTimeSlotCompleteDto {
+  @IsString()
+  @IsOptional()
+  tempId?: string;
+
   @IsInt()
   @Min(0)
   @Max(6)
   dayOfWeek!: number;
-
-  @IsString()
-  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'openTime must be a valid time in HH:mm format',
-  })
-  openTime!: string;
-
-  @IsString()
-  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'closeTime must be a valid time in HH:mm format',
-  })
-  closeTime!: string;
-}
-
-export class PriceRuleCompleteDto {
-  @IsInt()
-  @Min(0)
-  @Max(6)
-  @IsOptional()
-  dayOfWeek?: number;
-
-  @IsDateString()
-  @IsOptional()
-  specialDate?: string;
 
   @IsString()
   @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
@@ -73,12 +61,17 @@ export class PriceRuleCompleteDto {
   })
   endTime!: string;
 
-  @IsNumber()
-  price!: number;
+  @IsEnum(TimeSlotLabel)
+  label!: TimeSlotLabel;
 
-  @IsString()
+  @IsInt()
+  @Min(0)
   @IsOptional()
-  label?: string;
+  sortOrder?: number;
+
+  @ValidateNested()
+  @Type(() => PriceRuleCompleteDto)
+  priceRule!: PriceRuleCompleteDto;
 }
 
 export class YardCompleteDto {
@@ -90,13 +83,8 @@ export class YardCompleteDto {
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => OperatingHourCompleteDto)
-  operatingHours!: OperatingHourCompleteDto[];
-
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => PriceRuleCompleteDto)
-  priceRules!: PriceRuleCompleteDto[];
+  @Type(() => FieldTimeSlotCompleteDto)
+  timeSlots!: FieldTimeSlotCompleteDto[];
 }
 
 // ─── Aggregate Root DTO ────────────────────────────────────────────────────────
