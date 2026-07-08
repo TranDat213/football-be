@@ -21,36 +21,27 @@ export class PrismaOperatingHourRepository implements IOperatingHourRepository {
     return !!yard;
   }
 
-  async update(id: string, data: UpdateFieldOperatingHourDto): Promise<FieldTimeSlot> {
-    const updateData: Prisma.FieldTimeSlotUpdateInput = {};
-    if (data.dayOfWeek !== undefined) updateData.dayOfWeek = data.dayOfWeek;
-    if (data.startTime) updateData.startTime = timeStringToDate(data.startTime);
-    if (data.endTime) updateData.endTime = timeStringToDate(data.endTime);
-    if (data.label !== undefined) updateData.label = data.label;
-    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
-
-    return this.prisma.fieldTimeSlot.update({ where: { id }, data: updateData });
-  }
-
-  async delete(id: string): Promise<FieldTimeSlot> {
-    return this.prisma.fieldTimeSlot.update({
-      where: { id },
-      data: { deletedAt: new Date() },
-    });
-  }
-
   async findById(id: string): Promise<FieldTimeSlot | null> {
-    return this.prisma.fieldTimeSlot.findFirst({ where: { id, deletedAt: null } });
+    return this.prisma.fieldTimeSlot.findFirst({
+      where: { id, deletedAt: null },
+    });
   }
 
   async findByYardId(fieldYardId: string): Promise<FieldTimeSlot[]> {
     return this.prisma.fieldTimeSlot.findMany({
       where: { fieldYardId, deletedAt: null },
-      orderBy: [{ dayOfWeek: 'asc' }, { sortOrder: 'asc' }, { startTime: 'asc' }],
+      orderBy: [
+        { dayOfWeek: 'asc' },
+        { sortOrder: 'asc' },
+        { startTime: 'asc' },
+      ],
     });
   }
 
-  async findByYardIdAndDay(fieldYardId: string, dayOfWeek: number): Promise<FieldTimeSlot | null> {
+  async findByYardIdAndDay(
+    fieldYardId: string,
+    dayOfWeek: number,
+  ): Promise<FieldTimeSlot | null> {
     return this.prisma.fieldTimeSlot.findFirst({
       where: { fieldYardId, dayOfWeek, deletedAt: null },
     });
@@ -96,5 +87,24 @@ export class PrismaOperatingHourRepository implements IOperatingHourRepository {
       );
     }
     return created;
+  }
+
+  async findTimeSlotsTx(
+    tx: Prisma.TransactionClient,
+    yardId: string,
+  ): Promise<FieldTimeSlot[]> {
+    return await tx.fieldTimeSlot.findMany({
+      where: { fieldYardId: yardId, deletedAt: null },
+    });
+  }
+
+  async deleteTimeSlotsTx(
+    tx: Prisma.TransactionClient,
+    yardId: string,
+  ): Promise<void> {
+    await tx.fieldTimeSlot.updateMany({
+      where: { fieldYardId: yardId, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
   }
 }

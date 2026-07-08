@@ -57,41 +57,28 @@ export class FieldService {
     return slug;
   }
 
-  async updateField(
+  /**
+   * Like generateUniqueSlug but skips the slug that currently belongs to fieldId,
+   * so renaming a field to the same name doesn't collide with itself.
+   */
+  async generateUniqueSlugExcluding(
+    name: string,
     fieldId: string,
-    data: UpdateFieldDto,
-  ): Promise<FootballField> {
-    let slug: string | undefined = undefined;
-    if (data.name) {
-      slug = normalizeSlug(data.name, Env.MAX_SLUG_LENGTH);
-      if (!slug) {
-        throw new BadRequestException('Field name is invalid to generate slug');
-      }
-    }
-    const field = await this.fieldRepository.findById(fieldId);
-    if (!field) {
-      throw new BadRequestException('Field not found');
-    }
-    if (data.category_id) {
-      const category = await this.fieldRepository.findCategoryById(
-        data.category_id,
-      );
-      if (!category) {
-        throw new BadRequestException('Category not found');
-      }
-    }
-    return await this.fieldRepository.updateField(fieldId, data, slug);
-  }
+  ): Promise<string> {
+    const baseSlug = normalizeSlug(name);
+    if (!baseSlug) throw new BadRequestException('Tên không hợp lệ');
 
-  async deleteField(fieldId: string): Promise<FootballField> {
-    const field = await this.fieldRepository.findById(fieldId);
-    if (!field) {
-      throw new BadRequestException('Field not found');
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (true) {
+      const existing = await this.fieldRepository.findBySlug(slug);
+      if (!existing || existing.id === fieldId) break;
+      slug = appendSlugSuffix(baseSlug, counter);
+      counter++;
     }
-    if (field?.status === FieldStatus.ACTIVE) {
-      throw new BadRequestException('Field is active');
-    }
-    return await this.fieldRepository.deleteField(fieldId);
+
+    return slug;
   }
 
   async findById(fieldId: string): Promise<FootballField> {
@@ -107,12 +94,16 @@ export class FieldService {
     status: FieldStatus,
   ): Promise<FootballField> {
     const field = await this.fieldRepository.findById(fieldId);
-    if (!field) {
-      throw new BadRequestException('Field not found');
+    if (!field) throw new BadRequestException('Field not found');
+    if (field.deletedAt) throw new BadRequestException('Field is deleted');
+
+    if (status === FieldStatus.INACTIVE) {
+      return await this.fieldRepository.updateFieldStatusWithCascade(
+        fieldId,
+        status,
+      );
     }
-    if (field.deletedAt) {
-      throw new BadRequestException('Field is deleted');
-    }
+
     return await this.fieldRepository.updateFieldStatus(fieldId, status);
   }
 
@@ -156,66 +147,6 @@ export class FieldService {
       throw new BadRequestException('Failed to upload image');
     }
     return { url: uploadedImage.secureUrl, publicId: uploadedImage.publicId };
-  }
-
-  async updateFieldImage(
-    fieldImageId: string,
-    data: UpdateFieldImageDto,
-    imageFile?: Express.Multer.File,
-  ): Promise<FieldImage> {
-    let uploadedImage: any = null;
-    try {
-      const fieldImage =
-        await this.fieldRepository.findFieldImageById(fieldImageId);
-      let imageUrl: string;
-      let imagePublicId: string;
-      if (!fieldImage) {
-        throw new BadRequestException('Field image not found');
-      }
-      if (fieldImage.deletedAt) {
-        throw new BadRequestException('Field image is deleted');
-      }
-      const oldpublicId = fieldImage.publicId;
-      if (imageFile) {
-        uploadedImage = await uploadToCloudinary(
-          imageFile.buffer,
-          imageFile.originalname,
-          FolderType.IMAGES,
-        );
-        if (!uploadedImage?.secureUrl || !uploadedImage?.publicId) {
-          throw new BadRequestException('Failed to upload image');
-        }
-        imageUrl = uploadedImage.secureUrl;
-        imagePublicId = uploadedImage.publicId;
-      }
-
-      if (imageFile && oldpublicId) {
-        await deleteImageFromCloudinary(oldpublicId);
-      }
-      return await this.fieldRepository.updateFieldImage(
-        fieldImageId,
-        data,
-        imageUrl!,
-        imagePublicId!,
-      );
-    } catch (error) {
-      if (uploadedImage?.publicId) {
-        await deleteImageFromCloudinary(uploadedImage.publicId);
-      }
-      throw error;
-    }
-  }
-
-  async deleteFieldImage(fieldImageId: string): Promise<FieldImage> {
-    const fieldImage =
-      await this.fieldRepository.findFieldImageById(fieldImageId);
-    if (!fieldImage) {
-      throw new BadRequestException('Field image not found');
-    }
-    if (fieldImage.deletedAt) {
-      throw new BadRequestException('Field image is deleted');
-    }
-    return await this.fieldRepository.deleteFieldImage(fieldImageId);
   }
 
   async findFieldImageById(fieldImageId: string): Promise<FieldImage> {

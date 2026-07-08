@@ -3,15 +3,6 @@ import { UpdateFieldYardDto } from '../dto/subfield.dto';
 import { YardCompleteDto } from '@/modules/field/dto/create-field-complete.dto';
 
 export interface ISubFieldRepository {
-
-  updateSubfield(
-    id: string,
-    code: string,
-    data: UpdateFieldYardDto,
-  ): Promise<FieldYard>;
-
-  deleteSubfield(id: string): Promise<FieldYard>;
-
   getSubfield(id: string): Promise<FieldYard | null>;
 
   getSubfields(page: number, limit: number): Promise<FieldYard[]>;
@@ -25,7 +16,7 @@ export interface ISubFieldRepository {
     limit: number,
     field_id: string,
   ): Promise<FieldYard[]>;
-  
+
   findFieldByOwnerId(ownerId: string): Promise<FootballField | null>;
 
   // ── Transaction-aware methods (used by CreateFootballFieldUseCase) ──────────
@@ -41,4 +32,23 @@ export interface ISubFieldRepository {
     data: Pick<YardCompleteDto, 'name' | 'type'>,
     code: string,
   ): Promise<FieldYard>;
+
+  updateYardTx(
+    tx: Prisma.TransactionClient,
+    yardId: string,
+    data: Pick<YardCompleteDto, 'name' | 'type'>,
+  ): Promise<FieldYard>;
+
+  deleteYardTx(tx: Prisma.TransactionClient, yardId: string): Promise<void>;
+
+  /** Returns true if yard has PENDING/CONFIRMED bookings */
+  hasActiveBookingsTx(
+    tx: Prisma.TransactionClient,
+    yardId: string,
+  ): Promise<boolean>;
+
+  findYardsByFieldIdTx(
+    tx: Prisma.TransactionClient,
+    fieldId: string,
+  ): Promise<FieldYard[]>;
 }

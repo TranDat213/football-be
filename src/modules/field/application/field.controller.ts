@@ -6,32 +6,20 @@ import {
   UpdateFieldStatusDto,
 } from '../dto/field.dto';
 import { CreateFootballFieldUseCase } from './create-football-field.usecase';
+import { UpdateFootballFieldUseCase } from './update-football-field.usecase';
+import { DeleteFootballFieldUseCase } from './delete-football-field.usecase';
 import { BadRequestException } from '@/utils/app-error';
 import { CreateFootballFieldCompleteDto } from '../dto/create-field-complete.dto';
+import { UpdateFootballFieldCompleteDto } from '../dto/update-field-complete.dto';
 import 'multer';
 
 export class FieldController {
   constructor(
     private readonly fieldService: FieldService,
     private readonly createFootballFieldUseCase?: CreateFootballFieldUseCase,
+    private readonly updateFootballFieldUseCase?: UpdateFootballFieldUseCase,
+    private readonly deleteFootballFieldUseCase?: DeleteFootballFieldUseCase,
   ) {}
-
-  async updateField(req: Request, res: Response, _next: NextFunction) {
-    const fieldId = req.params.id as string;
-    const data = req.body as UpdateFieldDto;
-    const field = await this.fieldService.updateField(fieldId, data);
-    return res
-      .status(200)
-      .json({ message: 'Field updated successfully', data: field });
-  }
-
-  async deleteField(req: Request, res: Response, _next: NextFunction) {
-    const fieldId = req.params.id as string;
-    const field = await this.fieldService.deleteField(fieldId);
-    return res
-      .status(200)
-      .json({ message: 'Field deleted successfully', data: field });
-  }
 
   async findById(req: Request, res: Response, _next: NextFunction) {
     const fieldId = req.params.id as string;
@@ -93,28 +81,6 @@ export class FieldController {
       message: 'Image uploaded successfully',
       data: result,
     });
-  }
-
-  async updateFieldImage(req: Request, res: Response, _next: NextFunction) {
-    const fieldImageId = req.params.id as string;
-    const data = req.body as UpdateFieldImageDto;
-    const imageFile = req.file as Express.Multer.File;
-    const fieldImage = await this.fieldService.updateFieldImage(
-      fieldImageId,
-      data,
-      imageFile,
-    );
-    return res
-      .status(200)
-      .json({ message: 'Field image updated successfully', data: fieldImage });
-  }
-
-  async deleteFieldImage(req: Request, res: Response, _next: NextFunction) {
-    const fieldImageId = req.params.id as string;
-    const fieldImage = await this.fieldService.deleteFieldImage(fieldImageId);
-    return res
-      .status(200)
-      .json({ message: 'Field image deleted successfully', data: fieldImage });
   }
 
   async findFieldImageById(req: Request, res: Response, _next: NextFunction) {
@@ -180,5 +146,40 @@ export class FieldController {
       message: 'Football field created successfully with all related data',
       data: result,
     });
+  }
+
+  async updateFieldComplete(req: Request, res: Response, _next: NextFunction) {
+    if (!this.updateFootballFieldUseCase) {
+      return res
+        .status(500)
+        .json({ message: 'UpdateFootballFieldUseCase not configured' });
+    }
+    const ownerId = req.user?.id as string;
+    const fieldId = req.params.id as string;
+    const dto = req.body as UpdateFootballFieldCompleteDto;
+    const result = await this.updateFootballFieldUseCase.execute(
+      ownerId,
+      fieldId,
+      dto,
+    );
+    return res.status(200).json({
+      message: 'Football field updated successfully',
+      data: result,
+    });
+  }
+
+  async deleteFieldComplete(req: Request, res: Response, _next: NextFunction) {
+    if (!this.deleteFootballFieldUseCase) {
+      return res
+        .status(500)
+        .json({ message: 'DeleteFootballFieldUseCase not configured' });
+    }
+    const ownerId = req.user?.id as string;
+    const fieldId = req.params.id as string;
+    const result = await this.deleteFootballFieldUseCase.execute(
+      ownerId,
+      fieldId,
+    );
+    return res.status(200).json(result);
   }
 }

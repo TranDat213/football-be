@@ -1,40 +1,16 @@
-import { FieldYard, FootballField, Prisma, PrismaClient, YardStatus, YardType } from '@prisma/client';
+import {
+  FieldYard,
+  FootballField,
+  Prisma,
+  PrismaClient,
+  YardStatus,
+  YardType,
+} from '@prisma/client';
 import { ISubFieldRepository } from '../domain/subfield.repository';
-import { UpdateFieldYardDto } from '../dto/subfield.dto';
 import { YardCompleteDto } from '@/modules/field/dto/create-field-complete.dto';
 
 export class PrismaSubFieldRepository implements ISubFieldRepository {
   constructor(private readonly prisma: PrismaClient) {}
-  
-  async updateSubfield(
-    id: string,
-    code: string,
-    data: UpdateFieldYardDto,
-  ): Promise<FieldYard> {
-    return await this.prisma.fieldYard.update({
-      where: {
-        id: id,
-      },
-      data: {
-        name: data.name,
-        footballFieldId: data.field_id,
-        type: data.type,
-        status: data.status,
-        code: code,
-      },
-    });
-  }
-
-  async deleteSubfield(id: string): Promise<FieldYard> {
-    return await this.prisma.fieldYard.update({
-      where: {
-        id: id,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
-  }
 
   async getSubfield(id: string): Promise<FieldYard | null> {
     return await this.prisma.fieldYard.findUnique({
@@ -44,7 +20,7 @@ export class PrismaSubFieldRepository implements ISubFieldRepository {
       },
     });
   }
-  
+
   async getSubfields(page: number, limit: number): Promise<FieldYard[]> {
     return await this.prisma.fieldYard.findMany({
       where: {
@@ -139,6 +115,54 @@ export class PrismaSubFieldRepository implements ISubFieldRepository {
         createdAt: new Date(),
         updatedAt: new Date(),
       },
+    });
+  }
+
+  async updateYardTx(
+    tx: Prisma.TransactionClient,
+    yardId: string,
+    data: Pick<YardCompleteDto, 'name' | 'type'>,
+  ): Promise<FieldYard> {
+    return await tx.fieldYard.update({
+      where: { id: yardId },
+      data: {
+        name: data.name,
+        type: data.type,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async deleteYardTx(
+    tx: Prisma.TransactionClient,
+    yardId: string,
+  ): Promise<void> {
+    await tx.fieldYard.update({
+      where: { id: yardId },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  async hasActiveBookingsTx(
+    tx: Prisma.TransactionClient,
+    yardId: string,
+  ): Promise<boolean> {
+    const count = await tx.booking.count({
+      where: {
+        fieldYardId: yardId,
+        deletedAt: null,
+        status: { in: ['PENDING', 'CONFIRMED'] },
+      },
+    });
+    return count > 0;
+  }
+
+  async findYardsByFieldIdTx(
+    tx: Prisma.TransactionClient,
+    fieldId: string,
+  ): Promise<FieldYard[]> {
+    return await tx.fieldYard.findMany({
+      where: { footballFieldId: fieldId, deletedAt: null },
     });
   }
 }

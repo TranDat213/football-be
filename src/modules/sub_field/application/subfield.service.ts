@@ -1,6 +1,5 @@
 import { FieldYard } from '@prisma/client';
 import { ISubFieldRepository } from '../domain/subfield.repository';
-import { UpdateFieldYardDto } from '../dto/subfield.dto';
 import {
   BadRequestException,
   InternalServerException,
@@ -34,58 +33,6 @@ export class SubFieldService {
         throw error;
       }
       throw new InternalServerException('Failed to generate code');
-    }
-  }
-
-  async updateSubfield(
-    id: string,
-    data: UpdateFieldYardDto,
-  ): Promise<FieldYard> {
-    try {
-      const subfield = await this.subFieldRepository.getSubfield(id);
-      if (!subfield) {
-        throw new BadRequestException('Subfield not found');
-      }
-      const field = await this.subFieldRepository.findFieldByFieldId(
-        subfield.footballFieldId,
-      );
-      if (!field) {
-        throw new BadRequestException('Field not found');
-      }
-      if (field.status !== 'ACTIVE') {
-        throw new BadRequestException('Field is not active');
-      }
-      let code = subfield.code;
-      if (data.type) {
-        code = await this.generateCode(subfield.footballFieldId, data.type);
-      }
-      return await this.subFieldRepository.updateSubfield(id, code, data);
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      throw new InternalServerException('Failed to update subfield');
-    }
-  }
-
-  async deleteSubfield(id: string): Promise<FieldYard> {
-    try {
-      const subfield = await this.subFieldRepository.getSubfield(id);
-      if (!subfield) {
-        throw new BadRequestException('Subfield not found');
-      }
-      if (subfield.status === 'ACTIVE') {
-        throw new BadRequestException('Subfield is active');
-      }
-      if (subfield.deletedAt) {
-        throw new BadRequestException('Subfield is deleted');
-      }
-      return await this.subFieldRepository.deleteSubfield(id);
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      throw new InternalServerException('Failed to delete subfield');
     }
   }
 

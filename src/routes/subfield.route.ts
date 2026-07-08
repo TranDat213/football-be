@@ -16,21 +16,6 @@ const subfieldRepository = new PrismaSubFieldRepository(prisma);
 const subfieldService = new SubFieldService(subfieldRepository);
 const subfieldController = new SubFieldController(subfieldService);
 
-subfieldRouter.put(
-  '/:id',
-  authenticate,
-  authorize(UserRole.OWNER),
-  validateDto(UpdateFieldYardDto),
-  subfieldController.updateSubfield.bind(subfieldController),
-);
-
-subfieldRouter.delete(
-  '/:id',
-  authenticate,
-  authorize(UserRole.OWNER),
-  subfieldController.deleteSubfield.bind(subfieldController),
-);
-
 subfieldRouter.get(
   '/find/:id',
   subfieldController.getSubfield.bind(subfieldController),
