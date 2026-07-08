@@ -74,6 +74,7 @@ export class ForgotPasswordDto {
   })
   confirmPassword!: string;
 }
+
 export class OAuthDto {
   @IsString()
   @IsEmail()
@@ -100,11 +101,48 @@ export class OAuthDto {
   avatarUrl?: string;
 }
 
-export class VerifyOtpDto{
+export type OtpPurpose = 'SIGN_UP' | 'RESET_PASSWORD';
+
+export class RequestOtpDto {
+  @IsEmail()
+  @IsString()
+  email!: string;
+
+  @IsString()
+  purpose!: OtpPurpose;
+
+  @IsString()
+  @IsOptional()
+  first_name?: string;
+
+  @IsString()
+  @IsOptional()
+  last_name?: string;
+
+  @IsString()
+  @IsOptional()
+  user_name?: string;
+
+  @IsString()
+  @IsOptional()
+  @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  password?: string;
+
+  @IsString()
+  @IsOptional()
+  @MinLength(8, {
+    message: 'Confirm password must be at least 8 characters long',
+  })
+  confirmPassword?: string;
+}
+export class VerifyOtpDto {
   @IsString()
   @IsEmail()
   email!: string;
 
   @IsString()
   otp!: string;
+
+  @IsString()
+  purpose!: OtpPurpose;
 }

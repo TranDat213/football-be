@@ -8,7 +8,6 @@ import { authorize } from '@/middleware/authorize.middlerware';
 import { UserRole } from '@prisma/client';
 import { validateDto } from '@/middleware/validate-dto.middleware';
 import {
-  CreateFieldYardDto,
   UpdateFieldYardDto,
 } from '@/modules/sub_field/dto/subfield.dto';
 
@@ -16,14 +15,6 @@ const subfieldRouter = Router();
 const subfieldRepository = new PrismaSubFieldRepository(prisma);
 const subfieldService = new SubFieldService(subfieldRepository);
 const subfieldController = new SubFieldController(subfieldService);
-
-subfieldRouter.post(
-  '/',
-  authenticate,
-  authorize(UserRole.OWNER),
-  validateDto(CreateFieldYardDto),
-  subfieldController.createSubfield.bind(subfieldController),
-);
 
 subfieldRouter.put(
   '/:id',

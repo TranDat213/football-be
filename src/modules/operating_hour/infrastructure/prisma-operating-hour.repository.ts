@@ -1,6 +1,6 @@
 import { PrismaClient, FieldTimeSlot, Prisma } from '@prisma/client';
 import { IOperatingHourRepository } from '../domain/operating-hour.repository';
-import { CreateFieldOperatingHourDto, UpdateFieldOperatingHourDto } from '../dto/operating-hour.dto';
+import { UpdateFieldOperatingHourDto } from '../dto/operating-hour.dto';
 import { FieldTimeSlotCompleteDto } from '@/modules/field/dto/create-field-complete.dto';
 
 function timeStringToDate(time: string): Date {
@@ -19,19 +19,6 @@ export class PrismaOperatingHourRepository implements IOperatingHourRepository {
       },
     });
     return !!yard;
-  }
-
-  async create(fieldYardId: string, data: CreateFieldOperatingHourDto): Promise<FieldTimeSlot> {
-    return this.prisma.fieldTimeSlot.create({
-      data: {
-        fieldYardId,
-        dayOfWeek: data.dayOfWeek,
-        startTime: timeStringToDate(data.startTime),
-        endTime: timeStringToDate(data.endTime),
-        label: data.label,
-        sortOrder: data.sortOrder ?? 0,
-      },
-    });
   }
 
   async update(id: string, data: UpdateFieldOperatingHourDto): Promise<FieldTimeSlot> {

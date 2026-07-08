@@ -11,11 +11,6 @@ import { CreateFootballFieldCompleteDto, FieldImageCompleteDto } from '../dto/cr
 import { CreateFootballFieldResult } from '../application/create-football-field.usecase';
 
 export interface IFieldRepository {
-  // createField(
-  //   ownerId: string,
-  //   data: FieldDto,
-  //   slug: string,
-  // ): Promise<FootballField>;
   findByOwnerId(page:number, limit:number, ownerId: string): Promise<FootballField[]>;
   findOwner(ownerId: string): Promise<User | null>;
   findCategoryById(categoryId: string): Promise<FieldCategory | null>;
@@ -36,7 +31,6 @@ export interface IFieldRepository {
   findFieldPendingStatus(page:number,limit:number): Promise<FootballField[]>;
   getFieldStatics(): Promise<any>;
 
-  // createFieldImage(data: CreateFieldImageDto,imageUrl:string,imagePublicId:string): Promise<FieldImage>;
   updateFieldImage(fieldImageId: string, data: UpdateFieldImageDto,imageUrl:string | null,imagePublicId:string | null ): Promise<FieldImage>;
   deleteFieldImage(fieldImageId: string): Promise<FieldImage>;
   findFieldImageById(fieldImageId: string): Promise<FieldImage | null>;

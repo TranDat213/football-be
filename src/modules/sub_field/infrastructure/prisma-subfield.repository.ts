@@ -1,24 +1,10 @@
 import { FieldYard, FootballField, Prisma, PrismaClient, YardStatus, YardType } from '@prisma/client';
 import { ISubFieldRepository } from '../domain/subfield.repository';
-import { CreateFieldYardDto, UpdateFieldYardDto } from '../dto/subfield.dto';
+import { UpdateFieldYardDto } from '../dto/subfield.dto';
 import { YardCompleteDto } from '@/modules/field/dto/create-field-complete.dto';
 
 export class PrismaSubFieldRepository implements ISubFieldRepository {
   constructor(private readonly prisma: PrismaClient) {}
-  async createSubfield(
-    data: CreateFieldYardDto,
-    code: string,
-  ): Promise<FieldYard> {
-    return await this.prisma.fieldYard.create({
-      data: {
-        name: data.name,
-        footballFieldId: data.field_id,
-        type: data.type,
-        status: data.status,
-        code: code,
-      },
-    });
-  }
   
   async updateSubfield(
     id: string,

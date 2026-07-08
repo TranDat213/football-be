@@ -1,9 +1,8 @@
 import { FieldPriceRule, Prisma } from '@prisma/client';
-import { CreateFieldPriceRuleDto, UpdateFieldPriceRuleDto } from '../dto/price-rule.dto';
+import { UpdateFieldPriceRuleDto } from '../dto/price-rule.dto';
 import { PriceRuleCompleteDto } from '@/modules/field/dto/create-field-complete.dto';
 
 export interface IPriceRuleRepository {
-  create(data: CreateFieldPriceRuleDto): Promise<FieldPriceRule>;
   update(id: string, data: UpdateFieldPriceRuleDto): Promise<FieldPriceRule>;
   delete(id: string): Promise<FieldPriceRule>;
   findById(id: string): Promise<FieldPriceRule | null>;

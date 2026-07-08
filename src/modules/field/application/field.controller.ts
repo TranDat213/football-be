@@ -16,15 +16,6 @@ export class FieldController {
     private readonly createFootballFieldUseCase?: CreateFootballFieldUseCase,
   ) {}
 
-  // async createField(req: Request, res: Response, _next: NextFunction) {
-  //   const ownerId = req.user?.id as string;
-  //   const data = req.body as FieldDto;
-  //   const field = await this.fieldService.createField(ownerId, data);
-  //   return res
-  //     .status(201)
-  //     .json({ message: 'Field created successfully', data: field });
-  // }
-
   async updateField(req: Request, res: Response, _next: NextFunction) {
     const fieldId = req.params.id as string;
     const data = req.body as UpdateFieldDto;
@@ -91,16 +82,6 @@ export class FieldController {
       .status(200)
       .json({ message: 'Statics fetched successfully', data: statics });
   }
-
-  // async createFieldImage(req: Request, res: Response, _next: NextFunction) {
-  //   const data = req.body as CreateFieldImageDto;
-  //   const ownerId = req.user?.id as string;
-  //    const imageFile = req.file as Express.Multer.File;
-  //   const fieldImage = await this.fieldService.createFieldImage(data, ownerId, imageFile);
-  //   return res
-  //     .status(201)
-  //     .json({ message: 'Field image created successfully', data: fieldImage });
-  // }
 
   async upload(req: Request, res: Response, _next: NextFunction) {
     const imageFile = req.file as Express.Multer.File;

@@ -1,9 +1,8 @@
 import { FieldTimeSlot, Prisma } from '@prisma/client';
-import { CreateFieldOperatingHourDto, UpdateFieldOperatingHourDto } from '../dto/operating-hour.dto';
+import { UpdateFieldOperatingHourDto } from '../dto/operating-hour.dto';
 import { FieldTimeSlotCompleteDto } from '@/modules/field/dto/create-field-complete.dto';
 
 export interface IOperatingHourRepository {
-  create(fieldYardId: string, data: CreateFieldOperatingHourDto): Promise<FieldTimeSlot>;
   update(id: string, data: UpdateFieldOperatingHourDto): Promise<FieldTimeSlot>;
   delete(id: string): Promise<FieldTimeSlot>;
   findById(id: string): Promise<FieldTimeSlot | null>;

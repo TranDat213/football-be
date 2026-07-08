@@ -1,26 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
 import { OperatingHourService } from './operating-hour.service';
-import { CreateFieldOperatingHourDto, UpdateFieldOperatingHourDto } from '../dto/operating-hour.dto';
+import { UpdateFieldOperatingHourDto } from '../dto/operating-hour.dto';
 
 export class OperatingHourController {
   constructor(private readonly operatingHourService: OperatingHourService) {}
-
-  async create(req: Request, res: Response, next: NextFunction) {
-    try {
-      const data = req.body as CreateFieldOperatingHourDto;
-      const yardId = req.params.yardId as string;
-      const ownerId = req.user?.id as string;
-      const role = req.user?.role as any;
-      
-      const result = await this.operatingHourService.create(yardId, ownerId, role, data);
-      res.status(201).json({
-        message: 'Create operating hour successfully',
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
 
   async update(req: Request, res: Response, next: NextFunction) {
     try {

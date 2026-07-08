@@ -1,6 +1,6 @@
 import { FieldTimeSlot, UserRole } from '@prisma/client';
 import { IOperatingHourRepository } from '../domain/operating-hour.repository';
-import { CreateFieldOperatingHourDto, UpdateFieldOperatingHourDto } from '../dto/operating-hour.dto';
+import { UpdateFieldOperatingHourDto } from '../dto/operating-hour.dto';
 import { BadRequestException, ForbiddenException } from '@/utils/app-error';
 
 function toTimeDate(time: string): Date {
@@ -9,28 +9,6 @@ function toTimeDate(time: string): Date {
 
 export class OperatingHourService {
   constructor(private readonly operatingHourRepository: IOperatingHourRepository) {}
-
-  async create(
-    yardId: string,
-    ownerId: string,
-    userRole: UserRole,
-    data: CreateFieldOperatingHourDto,
-  ): Promise<FieldTimeSlot> {
-    if (userRole !== UserRole.ADMIN) {
-      const isOwner = await this.operatingHourRepository.checkYardOwnership(yardId, ownerId);
-      if (!isOwner) throw new ForbiddenException('You are not the owner of this yard');
-    }
-
-    const overlap = await this.operatingHourRepository.findOverlapping(
-      yardId,
-      data.dayOfWeek,
-      toTimeDate(data.startTime),
-      toTimeDate(data.endTime),
-    );
-    if (overlap) throw new BadRequestException('Time slot overlaps with existing slot');
-
-    return this.operatingHourRepository.create(yardId, data);
-  }
 
   async update(
     id: string,

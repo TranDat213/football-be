@@ -18,37 +18,6 @@ import { FieldImageCompleteDto } from '../dto/create-field-complete.dto';
 export class PrismaFieldRepository implements IFieldRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  // async createField(
-  //   ownerId: string,
-  //   data: FieldDto,
-  //   slug: string,
-  // ): Promise<FootballField> {
-  //   return await this.prisma.footballField.create({
-  //     data: {
-  //       ownerId: ownerId,
-  //       categoryId: data.category_id,
-  //       name: data.name,
-  //       description: data.description,
-  //       address: data.address,
-  //       province: data.province,
-  //       district: data.district,
-  //       ward: data.ward,
-  //       latitude: data.latitude,
-  //       longitude: data.longitude,
-  //       openTime: data.open_time
-  //         ? new Date(`1970-01-01T${data.open_time}:00Z`)
-  //         : null,
-  //       closeTime: data.close_time
-  //         ? new Date(`1970-01-01T${data.close_time}:00Z`)
-  //         : null,
-  //       status: FieldStatus.PENDING,
-  //       slug: slug,
-  //       createdAt: new Date(),
-  //       updatedAt: new Date(),
-  //     },
-  //   });
-  // }
-
   async findByOwnerId(
     page: number,
     limit: number,
@@ -187,24 +156,6 @@ export class PrismaFieldRepository implements IFieldRepository {
       },
     });
   }
-
-  // async createFieldImage(
-  //   data: CreateFieldImageDto,
-  //   imageUrl: string,
-  //   imagePublicId: string,
-  // ): Promise<FieldImage> {
-  //   return await this.prisma.fieldImage.create({
-  //     data: {
-  //       footballFieldId: data.footballFieldId,
-  //       url: imageUrl,
-  //       publicId: imagePublicId,
-  //       sortOrder: data.sortOrder,
-  //       isCover: data.isCover,
-  //       createdAt: new Date(),
-  //       updatedAt: new Date(),
-  //     },
-  //   });
-  // }
 
   async updateFieldImage(
     fieldImageId: string,

@@ -1,7 +1,6 @@
 import { PrismaClient, FieldPriceRule, Prisma } from '@prisma/client';
 import { IPriceRuleRepository } from '../domain/price-rule.repository';
 import {
-  CreateFieldPriceRuleDto,
   UpdateFieldPriceRuleDto,
 } from '../dto/price-rule.dto';
 import { PriceRuleCompleteDto } from '@/modules/field/dto/create-field-complete.dto';
@@ -24,15 +23,6 @@ export class PrismaPriceRuleRepository implements IPriceRuleRepository {
       },
     });
     return !!slot;
-  }
-
-  async create(data: CreateFieldPriceRuleDto): Promise<FieldPriceRule> {
-    return this.prisma.fieldPriceRule.create({
-      data: {
-        timeSlotId: data.timeSlotId,
-        price: data.price,
-      },
-    });
   }
 
   async update(

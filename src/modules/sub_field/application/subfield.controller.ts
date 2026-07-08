@@ -1,19 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
 import { SubFieldService } from './subfield.service';
-import { FieldYard } from '@prisma/client';
-import { CreateFieldYardDto, UpdateFieldYardDto } from '../dto/subfield.dto';
+import { UpdateFieldYardDto } from '../dto/subfield.dto';
 
 export class SubFieldController {
   constructor(private readonly subFieldService: SubFieldService) {}
-  async createSubfield(req: Request, res: Response, _next: NextFunction) {
-    const data = req.body as CreateFieldYardDto;
-    const ownerId = req.user?.id as string;
-    const result = await this.subFieldService.createSubfield(ownerId, data);
-    res.status(201).json({
-      message: 'Create subfield successfully',
-      data: result,
-    });
-  }
 
   async updateSubfield(req: Request, res: Response, _next: NextFunction) {
     const data = req.body as UpdateFieldYardDto;

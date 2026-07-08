@@ -56,23 +56,6 @@ export class FieldService {
 
     return slug;
   }
-  // async createField(ownerId: string, data: FieldDto): Promise<FootballField> {
-  //   const slug = await this.generateUniqueSlug(data.name);
-  //   if (!slug) {
-  //     throw new BadRequestException('Field name is invalid to generate slug');
-  //   }
-  //   const owner = await this.fieldRepository.findOwner(ownerId);
-  //   if (!owner || owner.role !== UserRole.OWNER) {
-  //     throw new BadRequestException('Owner not found');
-  //   }
-  //   const category = await this.fieldRepository.findCategoryById(
-  //     data.category_id,
-  //   );
-  //   if (!category) {
-  //     throw new BadRequestException('Category not found');
-  //   }
-  //   return await this.fieldRepository.createField(ownerId, data, slug);
-  // }
 
   async updateField(
     fieldId: string,
@@ -160,46 +143,6 @@ export class FieldService {
   }
 
   // Field Images
-  // async createFieldImage(
-  //   data: CreateFieldImageDto,
-  //   ownerId: string,
-  //   imageFile?: Express.Multer.File,
-  // ): Promise<FieldImage> {
-  //    let imageUrl: string | null = null;
-  //   let imagePublicId: string | null = null;
-  //   let uploadedImage: any = null;
-  //   try{
-  //   const field = await this.fieldRepository.findById(data.footballFieldId);
-  //   if (!field) {
-  //     throw new BadRequestException('Field not found');
-  //   }
-  //   if (field.deletedAt) {
-  //     throw new BadRequestException('Field is deleted');
-  //   }
-  //   const fieldOwner = await this.fieldRepository.findFieldByOwnerId(ownerId);
-  //   if (!fieldOwner || ownerId !== field.ownerId ) {
-  //     throw new BadRequestException('You are not owner of this field');
-  //   }
-  //   if (imageFile) {
-  //     uploadedImage = await uploadToCloudinary(
-  //       imageFile.buffer,
-  //       imageFile.originalname,
-  //       FolderType.IMAGES,
-  //     );
-  //     if (!uploadedImage?.secureUrl || !uploadedImage?.publicId) {
-  //       throw new BadRequestException('Failed to upload image');
-  //     }
-  //     imageUrl = uploadedImage.secureUrl;
-  //     imagePublicId = uploadedImage.publicId;
-  //   }
-  //   return await this.fieldRepository.createFieldImage(data,imageUrl!,imagePublicId!);
-  // }catch(error){
-  //   if (uploadedImage?.publicId) {
-  //       await deleteImageFromCloudinary(uploadedImage.publicId);
-  //     }
-  //   throw error;
-  // }
-  // }
 
   async uploadImage(
     imageFile: Express.Multer.File,

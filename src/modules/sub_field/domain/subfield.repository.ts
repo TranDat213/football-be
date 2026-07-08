@@ -1,9 +1,8 @@
 import { FieldYard, FootballField, Prisma, YardType } from '@prisma/client';
-import { CreateFieldYardDto, UpdateFieldYardDto } from '../dto/subfield.dto';
+import { UpdateFieldYardDto } from '../dto/subfield.dto';
 import { YardCompleteDto } from '@/modules/field/dto/create-field-complete.dto';
 
 export interface ISubFieldRepository {
-  createSubfield(data: CreateFieldYardDto, code: string): Promise<FieldYard>;
 
   updateSubfield(
     id: string,

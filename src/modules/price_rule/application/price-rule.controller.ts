@@ -1,26 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
 import { PriceRuleService } from './price-rule.service';
-import { CreateFieldPriceRuleDto, UpdateFieldPriceRuleDto } from '../dto/price-rule.dto';
+import { UpdateFieldPriceRuleDto } from '../dto/price-rule.dto';
 
 export class PriceRuleController {
   constructor(private readonly priceRuleService: PriceRuleService) {}
-
-  async create(req: Request, res: Response, next: NextFunction) {
-    try {
-      const data = req.body as CreateFieldPriceRuleDto;
-      const yardId = req.params.yardId as string;
-      const ownerId = req.user?.id as string;
-      const role = req.user?.role as any;
-      
-      const result = await this.priceRuleService.create(yardId, ownerId, role, data);
-      res.status(201).json({
-        message: 'Create price rule successfully',
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
 
   async update(req: Request, res: Response, next: NextFunction) {
     try {

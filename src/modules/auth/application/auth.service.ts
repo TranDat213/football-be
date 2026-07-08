@@ -5,6 +5,7 @@ import { IAuthRepository, OtpData } from '../domain/auth.repository';
 import {
   ForgotPasswordDto,
   OAuthDto,
+  RequestOtpDto,
   SignInDto,
   SignUpDto,
   VerifyOtpDto,
@@ -17,11 +18,16 @@ import {
 } from '@/utils/app-error';
 import mailService from './mail.service';
 import * as crypto from 'node:crypto';
+import { Env } from '@/config/env.config';
 
 export class AuthService {
   constructor(private readonly authRepository: IAuthRepository) {}
 
   private otpStore = new Map<string, OtpData>();
+  private resetTokenStore = new Map<
+    string,
+    { token: string; expiresAt: number }
+  >();
 
   async signUp(data: SignUpDto): Promise<User> {
     try {
@@ -132,6 +138,9 @@ export class AuthService {
       }
 
       const hashedPassword = await bcrypt.hash(data.password, 10);
+      const email = data.email ?? user.email;
+
+      this.resetTokenStore.delete(email);
       return await this.authRepository.updatePassword(hashedPassword, user.id);
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -158,11 +167,40 @@ export class AuthService {
     }
   }
 
-  async requestOtp(email: string): Promise<void> {
+  async requestOtp(data: RequestOtpDto): Promise<void> {
     try {
-      const user = await this.authRepository.findUserByEmail(email);
-      if (!user) {
-        throw new NotFoundException('Email not found');
+      const { email, purpose } = data;
+      const existingUser = await this.authRepository.findUserByEmail(email);
+      let pendingSignUp: OtpData['pendingSignUp'];
+
+      if (purpose === 'SIGN_UP') {
+        if (existingUser) {
+          throw new BadRequestException('Email already exists');
+        }
+        const { first_name, last_name, user_name, password, confirmPassword } =
+          data;
+        if (!password || password !== confirmPassword) {
+          throw new BadRequestException('Passwords do not match');
+        }
+        if (user_name) {
+          const existingUsername =
+            await this.authRepository.findUserByUsername(user_name);
+          if (existingUsername) {
+            throw new BadRequestException('Username already exists');
+          }
+        }
+        pendingSignUp = {
+          first_name: first_name!,
+          last_name: last_name!,
+          user_name,
+          email,
+          password: await bcrypt.hash(password, 10),
+        };
+      } else {
+        // RESET_PASSWORD
+        if (!existingUser) {
+          throw new NotFoundException('Email not found');
+        }
       }
       const otpData = this.otpStore.get(email);
       if (otpData) {
@@ -181,10 +219,15 @@ export class AuthService {
         expiresAt: Date.now() + parseInt(process.env.OTP_EXPIRES || '60000'),
         attempts: 0,
         lastSentAt: Date.now(),
+        purpose,
+        pendingSignUp,
       });
       await mailService.sendVerificationEmail(email, otp);
     } catch (error) {
-      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
       console.error(error);
@@ -192,15 +235,16 @@ export class AuthService {
     }
   }
 
-  async veriFyOtp(data: VerifyOtpDto): Promise<void> {
+  async veriFyOtp(
+    data: VerifyOtpDto,
+  ): Promise<{ user?: User; resetToken?: string }> {
     try {
-      const user = await this.authRepository.findUserByEmail(data.email);
-      if (!user) {
-        throw new NotFoundException('Email not found');
-      }
       const otpData = this.otpStore.get(data.email);
       if (!otpData) {
-        throw new BadRequestException('OTP is not found');
+        throw new BadRequestException('OTP is not found or expired');
+      }
+      if (otpData.purpose !== data.purpose) {
+        throw new BadRequestException('OTP purpose mismatch');
       }
       const isOtpValid = await bcrypt.compare(data.otp, otpData.otpHash);
       if (!isOtpValid) {
@@ -209,15 +253,46 @@ export class AuthService {
           this.otpStore.delete(data.email);
           throw new BadRequestException('Too many attempts');
         }
-        throw new BadRequestException('OTP is incorrect remaining attempts: ' + (5 - otpData.attempts));
+        throw new BadRequestException(
+          'OTP is incorrect remaining attempts: ' + (5 - otpData.attempts),
+        );
       }
       if (otpData.expiresAt < Date.now()) {
         this.otpStore.delete(data.email);
         throw new BadRequestException('OTP is expired');
       }
-      this.otpStore.delete(data.email);
+
+      if (otpData.purpose === 'SIGN_UP') {
+        if (!otpData.pendingSignUp) {
+          throw new InternalServerException('No pending registration found');
+        }
+        const user = await this.authRepository.createUser({
+          first_name: otpData.pendingSignUp.first_name,
+          last_name: otpData.pendingSignUp.last_name,
+          user_name: otpData.pendingSignUp.user_name,
+          email: otpData.pendingSignUp.email,
+          password: otpData.pendingSignUp.password,
+          confirmPassword: otpData.pendingSignUp.password,
+        });
+        this.otpStore.delete(data.email);
+        return { user };
+      } else {
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        otpData.attempts = 0;
+        otpData.otpHash = ''; // vô hiệu OTP cũ, không cho verify lại
+        // Lưu resetToken tạm để forgotPassword kiểm tra (có thể dùng Map khác)
+        this.resetTokenStore.set(data.email, {
+          token: resetToken,
+          expiresAt: Date.now() + Number(Env.OTP_RESET_TOKEN), // 5 phút để đổi mật khẩu
+        });
+        this.otpStore.delete(data.email);
+        return { resetToken };
+      }
     } catch (error) {
-      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
       throw new InternalServerException('Failed to verify OTP');
@@ -226,7 +301,9 @@ export class AuthService {
 
   async verifyRefreshToken(token: string): Promise<{ userId: string }> {
     try {
-      return jwt.verify(token, process.env.JWT_REFRESH_SECRET || '') as { userId: string };
+      return jwt.verify(token, process.env.JWT_REFRESH_SECRET || '') as {
+        userId: string;
+      };
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }

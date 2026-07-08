@@ -1,6 +1,6 @@
 import { FieldYard } from '@prisma/client';
 import { ISubFieldRepository } from '../domain/subfield.repository';
-import { CreateFieldYardDto, UpdateFieldYardDto } from '../dto/subfield.dto';
+import { UpdateFieldYardDto } from '../dto/subfield.dto';
 import {
   BadRequestException,
   InternalServerException,
@@ -37,30 +37,6 @@ export class SubFieldService {
     }
   }
 
-  async createSubfield(
-    ownerId: string,
-    data: CreateFieldYardDto,
-  ): Promise<FieldYard> {
-    try {
-      const field = await this.subFieldRepository.findFieldByFieldId(
-        data.field_id,
-      );
-      if (!field) {
-        throw new BadRequestException('Field not found');
-      }
-      if (field.ownerId !== ownerId) {
-        throw new BadRequestException('You are not the owner of this field');
-      }
-      const code = await this.generateCode(data.field_id, data.type);
-      return await this.subFieldRepository.createSubfield(data, code);
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      throw new InternalServerException('Failed to create subfield');
-    }
-
-  }
   async updateSubfield(
     id: string,
     data: UpdateFieldYardDto,
