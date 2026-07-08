@@ -169,6 +169,12 @@ enum TimeSlotLabel {
   PEAK
   LATE_NIGHT
 }
+
+enum FootballFieldUpdateRequestStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
 // ─────────────────────────────────────────
 // DOMAIN: USERS
 // ─────────────────────────────────────────
@@ -204,6 +210,8 @@ model User {
   conversations         Conversation[]
   ownerRegistration     OwnerRegistration[]
   payouts               Payout[]
+  updateRequests        FootballFieldUpdateRequest[]
+  reviewedRequests      FootballFieldUpdateRequest[] @relation("Reviewer")
 
   @@index([role, status])
   @@index([deletedAt])
@@ -253,6 +261,7 @@ model FootballField {
   yards      FieldYard[]
   images     FieldImage[]
   reviews    FieldReview[]
+  updateRequests FootballFieldUpdateRequest[]
   // ponytail: matchPosts removed; browse via Booking → CasualMatch
 
   @@index([ownerId, status])
@@ -260,6 +269,27 @@ model FootballField {
   @@index([latitude, longitude])
   @@index([deletedAt])
   @@map("football_fields")
+}
+
+model FootballFieldUpdateRequest {
+  id              String                           @id @default(uuid())
+  footballFieldId String                           @map("football_field_id")
+  ownerId         String                           @map("owner_id")
+  payload         Json
+  status          FootballFieldUpdateRequestStatus @default(PENDING)
+  reason          String?                          @db.Text
+  reviewedBy      String?                          @map("reviewed_by")
+  reviewedAt      DateTime?                        @map("reviewed_at")
+  createdAt       DateTime                         @default(now()) @map("created_at")
+  updatedAt       DateTime                         @updatedAt @map("updated_at")
+  deletedAt       DateTime?                        @map("deleted_at")
+
+  footballField   FootballField                    @relation(fields: [footballFieldId], references: [id])
+  owner           User                             @relation(fields: [ownerId], references: [id])
+  reviewer        User?                            @relation("Reviewer", fields: [reviewedBy], references: [id])
+
+  @@index([footballFieldId, status])
+  @@map("football_field_update_requests")
 }
 
 model FieldYard {

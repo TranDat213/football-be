@@ -9,11 +9,7 @@ import { FieldService } from '@/modules/field/application/field.service';
 import { CreateFootballFieldUseCase } from '@/modules/field/application/create-football-field.usecase';
 import { UpdateFootballFieldUseCase } from '@/modules/field/application/update-football-field.usecase';
 import { DeleteFootballFieldUseCase } from '@/modules/field/application/delete-football-field.usecase';
-import {
-  UpdateFieldDto,
-  UpdateFieldImageDto,
-  UpdateFieldStatusDto,
-} from '@/modules/field/dto/field.dto';
+import { UpdateFieldStatusDto } from '@/modules/field/dto/field.dto';
 import { CreateFootballFieldCompleteDto } from '@/modules/field/dto/create-field-complete.dto';
 import { UpdateFootballFieldCompleteDto } from '@/modules/field/dto/update-field-complete.dto';
 import { PrismaFieldRepository } from '@/modules/field/infrastructure/prisma-field.repository';

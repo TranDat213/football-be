@@ -10,8 +10,6 @@ import {
 } from '@prisma/client';
 import {
   FieldDto,
-  UpdateFieldDto,
-  UpdateFieldImageDto,
 } from '../dto/field.dto';
 import { FieldImageCompleteDto } from '../dto/create-field-complete.dto';
 
