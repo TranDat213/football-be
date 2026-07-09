@@ -20,7 +20,7 @@ export interface IFootballFieldUpdateRequestRepository {
 
   findPending(query: {
     status?: FootballFieldUpdateRequestStatus;
-  }): Promise<FootballFieldUpdateRequest[]>;
+  },page: number, limit:number): Promise<FootballFieldUpdateRequest[]>;
 
   updateStatus(
     id: string,

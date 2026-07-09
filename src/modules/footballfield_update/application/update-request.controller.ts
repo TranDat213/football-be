@@ -1,7 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { FootballFieldUpdateRequestService } from './update-request.service';
 import { UpdateFootballFieldCompleteDto } from '@/modules/field/dto/update-field-complete.dto';
-import { RejectFootballFieldUpdateRequestDto, ListFootballFieldUpdateRequestQueryDto } from '../dto/update-request.dto';
+import {
+  RejectFootballFieldUpdateRequestDto,
+  ListFootballFieldUpdateRequestQueryDto,
+} from '../dto/update-request.dto';
 
 export class FootballFieldUpdateRequestController {
   constructor(private readonly service: FootballFieldUpdateRequestService) {}
@@ -43,11 +46,22 @@ export class FootballFieldUpdateRequestController {
 
   async listRequests(req: Request, res: Response, next: NextFunction) {
     try {
-      const query = req.query as unknown as ListFootballFieldUpdateRequestQueryDto;
-      const results = await this.service.listRequests(query);
+      const query =
+        req.query as unknown as ListFootballFieldUpdateRequestQueryDto;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const results = await this.service.listRequests(query, page, limit);
+
       res.status(200).json({ data: results });
     } catch (error) {
       next(error);
     }
+  }
+
+  async softDelete(req:Request, res: Response,next: NextFunction){
+    const id = req.params.id as string;
+    const results = await this.service.softDelete(id);
+
+    res.status(200).json({ data: results });
   }
 }

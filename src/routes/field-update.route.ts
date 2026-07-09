@@ -41,7 +41,7 @@ const service = new FootballFieldUpdateRequestService(requestRepo, fieldRepo, ca
 const controller = new FootballFieldUpdateRequestController(service);
 
 fieldUpdateRouter.post(
-  '/football-fields/:id/update-request',
+  '/:id/update-request',
   authenticate,
   authorize('OWNER'),
   controller.createRequest.bind(controller),
@@ -69,4 +69,10 @@ fieldUpdateRouter.get(
   controller.listRequests.bind(controller),
 );
 
+fieldUpdateRouter.patch(
+  'delete/:id',
+  authenticate,
+  authorize('ADMIN'),
+  controller.softDelete.bind(controller),
+);
 export default fieldUpdateRouter;

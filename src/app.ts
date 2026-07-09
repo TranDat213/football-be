@@ -8,6 +8,7 @@ import { Env } from './config/env.config';
 import routers from './routes';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
+import { errorHandler } from './middleware/error-handler.middleware';
 
 const app = express();
 
@@ -28,6 +29,8 @@ app.use((req, res, next) => {
 });
 
 app.use('/api', routers);
+
+app.use(errorHandler);
 
 const PORT = Env.PORT || 5000;
 

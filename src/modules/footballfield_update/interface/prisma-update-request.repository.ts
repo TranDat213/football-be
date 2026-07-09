@@ -35,7 +35,7 @@ export class PrismaFootballFieldUpdateRequestRepository implements IFootballFiel
 
   async findPending(query: {
     status?: FootballFieldUpdateRequestStatus;
-  }): Promise<FootballFieldUpdateRequest[]> {
+  }, page: number, limit: number): Promise<FootballFieldUpdateRequest[]> {
     const where: Prisma.FootballFieldUpdateRequestWhereInput = {
       deletedAt: null,
     };
@@ -45,7 +45,25 @@ export class PrismaFootballFieldUpdateRequestRepository implements IFootballFiel
 
     return this.prisma.footballFieldUpdateRequest.findMany({
       where,
+      include: {
+        footballField: {
+          include:{
+            owner: {
+              select:{
+                id:true,
+                firstName: true,
+                lastName: true,
+                username: true,
+                email: true,
+                phone: true,
+              }
+            }
+          }
+        }, 
+      },
       orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
   }
 
