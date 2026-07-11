@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { BookingService } from './booking.service';
-import { CreateBookingDto } from '../dto/booking.dto';
+import { CreateBookingDto, CreateOfflineBookingDto } from '../dto/booking.dto';
 
 export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
@@ -104,4 +104,17 @@ export class BookingController {
 
     return res.status(200).json(result);
   }
+
+  async createOfflineBooking(req: Request, res: Response, _next: NextFunction) {
+  const ownerId = req.user?.id as string;
+  const fieldYardId = req.params.fieldYardId as string;
+  const data = req.body as CreateOfflineBookingDto;
+
+  const booking = await this.bookingService.createOfflineBooking(ownerId, fieldYardId, data);
+
+  return res.status(201).json({
+    message: 'Đã khoá khung giờ do khách đặt ngoài',
+    data: booking,
+  });
+}
 }

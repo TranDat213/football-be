@@ -9,7 +9,6 @@ import {
   InternalServerException,
 } from '@/utils/app-error';
 import { FieldStatus, FootballFieldUpdateRequestStatus } from '@prisma/client';
-import { Logger } from 'nodemailer/lib/shared';
 
 export class FootballFieldUpdateRequestService {
   constructor(
@@ -132,7 +131,7 @@ export class FootballFieldUpdateRequestService {
     return this.requestRepo.findPending(query, page, limit);
   }
 
-  async softDelete(id: string){
+  async softDelete(id: string) {
     const request = await this.requestRepo.findById(id);
     if (
       !request ||
@@ -141,5 +140,19 @@ export class FootballFieldUpdateRequestService {
       throw new BadRequestException('Update request not found or not pending');
     }
     return await this.requestRepo.softDelete(id);
+  }
+
+  async listRequestsByOwnerId(
+    ownerId: string,
+    status: FootballFieldUpdateRequestStatus,
+    page: number,
+    limit: number,
+  ) {
+    return this.requestRepo.findByOwnerIdAndStatus(
+      ownerId,
+      status,
+      page,
+      limit,
+    );
   }
 }

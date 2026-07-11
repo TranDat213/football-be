@@ -88,4 +88,32 @@ export class PrismaFootballFieldUpdateRequestRepository implements IFootballFiel
       data: { deletedAt: new Date() },
     });
   }
+
+  async findByOwnerIdAndStatus(
+    ownerId: string,
+    status: FootballFieldUpdateRequestStatus,
+    page: number,
+    limit: number,
+  ): Promise<FootballFieldUpdateRequest[]> {
+    const where: Prisma.FootballFieldUpdateRequestWhereInput = {
+      ownerId,
+      deletedAt: null,
+    };
+    if (status) {
+      where.status = status;
+    }
+    return this.prisma.footballFieldUpdateRequest.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+      include: {
+        footballField: {
+          include: {
+            owner: true,
+          },
+        },
+      },
+    });
+  }
 }

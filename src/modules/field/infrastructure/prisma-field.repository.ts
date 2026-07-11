@@ -174,49 +174,53 @@ export class PrismaFieldRepository implements IFieldRepository {
   }
 
   async getAvailability(fieldId: string, date: Date): Promise<any> {
-    return await this.prisma.fieldYard.findMany({
-      where: {
-        footballFieldId: fieldId,
-        status: 'ACTIVE',
-        deletedAt: null,
-      },
-      include: {
-        bookings: {
-          where: {
-            bookingDate: date,
-            status: {
-              in: ['PENDING', 'CONFIRMED'],
-            },
-            deletedAt: null,
-          },
-          select: {
-            startTime: true,
-            endTime: true,
-          },
-        },
-        timeSlots: {
-          where: { deletedAt: null },
-          select: {
-            dayOfWeek: true,
-            startTime: true,
-            endTime: true,
-            label: true,
-            priceRule: {
-              where: { deletedAt: null },
-              select: {
-                price: true,
-              },
-            },
-          },
-          orderBy: [
-            { dayOfWeek: 'asc' },
-            { sortOrder: 'asc' },
-            { startTime: 'asc' },
+  const now = new Date();
+
+  return await this.prisma.fieldYard.findMany({
+    where: {
+      footballFieldId: fieldId,
+      status: 'ACTIVE',
+      deletedAt: null,
+    },
+    include: {
+      bookings: {
+        where: {
+          bookingDate: date,
+          deletedAt: null,
+          OR: [
+            { status: 'CONFIRMED' },
+            { status: 'PENDING' },
+            { status: 'AWAITING_PAYMENT', expiresAt: { gt: now } },
           ],
         },
+        select: {
+          startTime: true,
+          endTime: true,
+        },
       },
-    });
-  }
+      timeSlots: {
+        where: { deletedAt: null },
+        select: {
+          dayOfWeek: true,
+          startTime: true,
+          endTime: true,
+          label: true,
+          priceRule: {
+            where: { deletedAt: null },
+            select: {
+              price: true,
+            },
+          },
+        },
+        orderBy: [
+          { dayOfWeek: 'asc' },
+          { sortOrder: 'asc' },
+          { startTime: 'asc' },
+        ],
+      },
+    },
+  });
+}
 
   async findFieldActiveStatus(
     page: number,

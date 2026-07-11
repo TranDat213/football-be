@@ -28,4 +28,7 @@ export const Env = {
     VNP_HASH_SECRET: getEnv('VNP_HASH_SECRET', 'PLACEHOLDER'),
     VNP_URL: getEnv('VNP_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'),
     VNP_RETURN_URL: getEnv('VNP_RETURN_URL', 'http://localhost:3000/payment/callback'),
+
+    LOCK_TTL_MINUTES: getEnv('LOCK_TTL_MINUTES'),
+    CUTOFF_MINUTES: getEnv('CUTOFF_MINUTES'),
 } as const;

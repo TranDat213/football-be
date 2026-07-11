@@ -18,9 +18,13 @@ export interface IFootballFieldUpdateRequestRepository {
     status: FootballFieldUpdateRequestStatus,
   ): Promise<FootballFieldUpdateRequest | null>;
 
-  findPending(query: {
-    status?: FootballFieldUpdateRequestStatus;
-  },page: number, limit:number): Promise<FootballFieldUpdateRequest[]>;
+  findPending(
+    query: {
+      status?: FootballFieldUpdateRequestStatus;
+    },
+    page: number,
+    limit: number,
+  ): Promise<FootballFieldUpdateRequest[]>;
 
   updateStatus(
     id: string,
@@ -33,4 +37,11 @@ export interface IFootballFieldUpdateRequestRepository {
   ): Promise<FootballFieldUpdateRequest>;
 
   softDelete(id: string): Promise<void>;
+
+  findByOwnerIdAndStatus(
+    ownerId: string,
+    status: FootballFieldUpdateRequestStatus,
+    page: number,
+    limit: number,
+  ): Promise<FootballFieldUpdateRequest[]>;
 }

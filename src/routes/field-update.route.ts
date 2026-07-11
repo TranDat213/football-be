@@ -15,6 +15,7 @@ import { PrismaSubFieldRepository } from '@/modules/sub_field/infrastructure/pri
 import { PrismaOperatingHourRepository } from '@/modules/operating_hour/infrastructure/prisma-operating-hour.repository';
 import { PrismaPriceRuleRepository } from '@/modules/price_rule/infrastructure/prisma-price-rule.repository';
 import { FieldService } from '@/modules/field/application/field.service';
+import { UserRole } from '@prisma/client';
 
 // TODO: import repo thật của field/category đang có sẵn trong project
 // import { FieldPrismaRepository } from '@/modules/field/infrastructure/field.prisma.repository';
@@ -43,21 +44,21 @@ const controller = new FootballFieldUpdateRequestController(service);
 fieldUpdateRouter.post(
   '/:id/update-request',
   authenticate,
-  authorize('OWNER'),
+  authorize(UserRole.OWNER),
   controller.createRequest.bind(controller),
 );
 
 fieldUpdateRouter.patch(
   '/admin/football-field-update-request/:id/approve',
   authenticate,
-  authorize('ADMIN'),
+  authorize(UserRole.ADMIN),
   controller.approveRequest.bind(controller),
 );
 
 fieldUpdateRouter.patch(
   '/admin/football-field-update-request/:id/reject',
   authenticate,
-  authorize('ADMIN'),
+  authorize(UserRole.ADMIN),
   validateDto(RejectFootballFieldUpdateRequestDto),
   controller.rejectRequest.bind(controller),
 );
@@ -65,14 +66,23 @@ fieldUpdateRouter.patch(
 fieldUpdateRouter.get(
   '/admin/football-field-update-request',
   authenticate,
-  authorize('ADMIN'),
+  authorize(UserRole.ADMIN),
   controller.listRequests.bind(controller),
 );
 
 fieldUpdateRouter.patch(
-  'delete/:id',
+  '/delete/:id',
   authenticate,
-  authorize('ADMIN'),
+  authorize(UserRole.OWNER),
   controller.softDelete.bind(controller),
 );
+
+console.log(fieldUpdateRouter.stack);
+fieldUpdateRouter.get(
+  '/:ownerId/football-field-update-request',
+  authenticate,
+  authorize(UserRole.OWNER),
+  controller.listRequestsByOwnerId.bind(controller),
+);
+
 export default fieldUpdateRouter;

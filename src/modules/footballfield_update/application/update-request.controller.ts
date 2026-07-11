@@ -5,6 +5,7 @@ import {
   RejectFootballFieldUpdateRequestDto,
   ListFootballFieldUpdateRequestQueryDto,
 } from '../dto/update-request.dto';
+import { FootballFieldUpdateRequestStatus } from '@prisma/client';
 
 export class FootballFieldUpdateRequestController {
   constructor(private readonly service: FootballFieldUpdateRequestService) {}
@@ -58,10 +59,28 @@ export class FootballFieldUpdateRequestController {
     }
   }
 
-  async softDelete(req:Request, res: Response,next: NextFunction){
+  async softDelete(req: Request, res: Response, next: NextFunction) {
     const id = req.params.id as string;
     const results = await this.service.softDelete(id);
 
     res.status(200).json({ data: results });
+  }
+
+  async listRequestsByOwnerId(req: Request, res: Response, next: NextFunction) {
+    try {
+      const ownerId = req.params.ownerId as string;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const status = req.query.status as FootballFieldUpdateRequestStatus;
+      const result = await this.service.listRequestsByOwnerId(
+        ownerId,
+        status,
+        page,
+        limit,
+      );
+      res.status(200).json({ data: result });
+    } catch (error) {
+      next(error);
+    }
   }
 }

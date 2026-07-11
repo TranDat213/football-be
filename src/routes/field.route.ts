@@ -129,7 +129,7 @@ fieldRouter.put(
   asyncHandler(fieldController.updateFieldComplete.bind(fieldController)),
 );
 
-fieldRouter.delete(
+fieldRouter.patch(
   '/delete-complete/:id',
   authenticate,
   authorize(UserRole.OWNER, UserRole.ADMIN),

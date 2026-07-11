@@ -15,22 +15,7 @@ import {
   uploadToCloudinary,
 } from '@/utils/cloudinary';
 import 'multer';
-
-const SLOT_MINUTES = 90; // 1.5 giờ = 90 phút
-
-function toMinutes(value: Date | string): number {
-  if (value instanceof Date) {
-    return value.getUTCHours() * 60 + value.getUTCMinutes();
-  }
-  const [h, m] = String(value).split(':').map(Number);
-  return h * 60 + (m || 0);
-}
-
-function formatMinutes(totalMinutes: number): string {
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
-  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-}
+import { formatMinutes, SLOT_MINUTES, toMinutes } from '@/config/time.config';
 
 /**
  * Tìm price rule phù hợp nhất cho slot [slotStart, slotEnd] (đơn vị: phút).
@@ -177,59 +162,67 @@ export class FieldService {
     );
   }
 
-  async getAvailability(fieldId: string, dateStr: string) {
-    const date = new Date(dateStr);
-    const dayOfWeek = date.getUTCDay(); // 0=CN,1=T2,...,6=T7
-
-    const yards = await this.fieldRepository.getAvailability(fieldId, date);
-
-    const yardsWithSlots = yards.map((yard: any) => {
-      // Booking ranges (phút)
-      const bookedRanges: [number, number][] = yard.bookings.map((b: any) => [
-        toMinutes(b.startTime),
-        toMinutes(b.endTime),
-      ]);
-
-      const slots = [];
-      const timeSlots = yard.timeSlots.filter(
-        (slot: any) => slot.dayOfWeek === dayOfWeek,
-      );
-      for (const timeSlot of timeSlots) {
-        const openMin = toMinutes(timeSlot.startTime);
-        const closeMin = toMinutes(timeSlot.endTime);
-
-        for (
-          let start = openMin;
-          start + SLOT_MINUTES <= closeMin;
-          start += SLOT_MINUTES
-        ) {
-          const end = start + SLOT_MINUTES;
-          const isBooked = bookedRanges.some(
-            ([bStart, bEnd]) => start < bEnd && end > bStart,
-          );
-          const rule = timeSlot.priceRules[0];
-
-          slots.push({
-            startTime: formatMinutes(start),
-            endTime: formatMinutes(end),
-            status: isBooked ? 'BOOKED' : 'AVAILABLE',
-            price: rule ? Number(rule.price) : 0,
-            priceLabel: timeSlot.label ?? null,
-          });
-        }
-      }
-
-      return {
-        yardId: yard.id,
-        yardName: yard.name,
-        yardCode: yard.code,
-        type: yard.type,
-        slots,
-      };
-    });
-
-    return { date: dateStr, yards: yardsWithSlots };
+ async getAvailability(fieldId: string, dateStr: string) {
+  const field = await this.findById(fieldId);
+  if(!field){
+    throw new BadRequestException('Sân không tồn tại');
   }
+  if(field.status !== 'ACTIVE') {
+    throw new BadRequestException('Sân không hoạt động');
+  }
+  const date = new Date(dateStr);
+  const dayOfWeek = date.getUTCDay(); // 0=CN,1=T2,...,6=T7
+
+  const yards = await this.fieldRepository.getAvailability(fieldId, date);
+
+  const yardsWithSlots = yards.map((yard: any) => {
+    const bookedRanges: [number, number][] = yard.bookings.map((b: any) => [
+      toMinutes(b.startTime),
+      toMinutes(b.endTime),
+    ]);
+
+    const slots = [];
+    const timeSlots = yard.timeSlots.filter(
+      (slot: any) => slot.dayOfWeek === dayOfWeek,
+    );
+
+    for (const timeSlot of timeSlots) {
+      const openMin = toMinutes(timeSlot.startTime);
+      const closeMin = toMinutes(timeSlot.endTime);
+
+      for (
+        let start = openMin;
+        start + SLOT_MINUTES <= closeMin;
+        start += SLOT_MINUTES
+      ) {
+        const end = start + SLOT_MINUTES;
+        const isBooked = bookedRanges.some(
+          ([bStart, bEnd]) => start < bEnd && end > bStart,
+        );
+        // 1-1: Prisma trả object đơn "priceRule", không phải mảng "priceRules"
+        const rule = timeSlot.priceRule;
+
+        slots.push({
+          startTime: formatMinutes(start),
+          endTime: formatMinutes(end),
+          status: isBooked ? 'BOOKED' : 'AVAILABLE',
+          price: rule ? Number(rule.price) : 0,
+          priceLabel: timeSlot.label ?? null,
+        });
+      }
+    }
+
+    return {
+      yardId: yard.id,
+      yardName: yard.name,
+      yardCode: yard.code,
+      type: yard.type,
+      slots,
+    };
+  });
+
+  return { date: dateStr, yards: yardsWithSlots };
+}
 
   async findFieldActiveStatus(
     page: number,

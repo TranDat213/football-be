@@ -37,8 +37,14 @@ enum YardStatus {
   MAINTENANCE
 }
 
+enum BookingSource{
+  ONLINE
+  OFFLINE
+}
+
 enum BookingStatus {
   PENDING
+  AWAITING_PAYMENT
   CONFIRMED
   CANCELLED
 }
@@ -375,7 +381,9 @@ model Booking {
   totalPrice      Decimal       @map("total_price") @db.Decimal(12, 2)
   status          BookingStatus @default(PENDING)
   paymentStatus   PaymentStatus @default(UNPAID) @map("payment_status")
+  source          BookingSource @default(ONLINE) @map("source")
   note            String?       @db.Text
+  expiresAt       DateTime?     @map("expires_at")
   cancelledAt     DateTime?     @map("cancelled_at")
   cancelledReason String?       @map("cancelled_reason") @db.Text
   createdAt       DateTime      @default(now()) @map("created_at")
@@ -392,6 +400,7 @@ model Booking {
   @@index([fieldYardId, bookingDate, startTime, endTime])
   @@index([userId, status])
   @@index([bookingDate, status])
+  @@index([status, expiresAt])
   @@map("bookings")
 }
 
