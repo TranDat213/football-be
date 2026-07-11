@@ -10,44 +10,11 @@ import {
 } from '@prisma/client';
 import {
   FieldDto,
-  UpdateFieldDto,
-  UpdateFieldImageDto,
 } from '../dto/field.dto';
 import { FieldImageCompleteDto } from '../dto/create-field-complete.dto';
 
 export class PrismaFieldRepository implements IFieldRepository {
   constructor(private readonly prisma: PrismaClient) {}
-
-  // async createField(
-  //   ownerId: string,
-  //   data: FieldDto,
-  //   slug: string,
-  // ): Promise<FootballField> {
-  //   return await this.prisma.footballField.create({
-  //     data: {
-  //       ownerId: ownerId,
-  //       categoryId: data.category_id,
-  //       name: data.name,
-  //       description: data.description,
-  //       address: data.address,
-  //       province: data.province,
-  //       district: data.district,
-  //       ward: data.ward,
-  //       latitude: data.latitude,
-  //       longitude: data.longitude,
-  //       openTime: data.open_time
-  //         ? new Date(`1970-01-01T${data.open_time}:00Z`)
-  //         : null,
-  //       closeTime: data.close_time
-  //         ? new Date(`1970-01-01T${data.close_time}:00Z`)
-  //         : null,
-  //       status: FieldStatus.PENDING,
-  //       slug: slug,
-  //       createdAt: new Date(),
-  //       updatedAt: new Date(),
-  //     },
-  //   });
-  // }
 
   async findByOwnerId(
     page: number,
@@ -71,7 +38,11 @@ export class PrismaFieldRepository implements IFieldRepository {
                   where: { deletedAt: null },
                 },
               },
-              orderBy: [{ dayOfWeek: 'asc' }, { sortOrder: 'asc' }, { startTime: 'asc' }],
+              orderBy: [
+                { dayOfWeek: 'asc' },
+                { sortOrder: 'asc' },
+                { startTime: 'asc' },
+              ],
             },
           },
         },
@@ -102,45 +73,6 @@ export class PrismaFieldRepository implements IFieldRepository {
     });
   }
 
-  async updateField(
-    fieldId: string,
-    data: UpdateFieldDto,
-    slug?: string,
-  ): Promise<FootballField> {
-    return await this.prisma.footballField.update({
-      where: { id: fieldId },
-      data: {
-        categoryId: data.category_id,
-        name: data.name,
-        description: data.description,
-        address: data.address,
-        province: data.province,
-        district: data.district,
-        ward: data.ward,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        openTime: data.open_time
-          ? new Date(`1970-01-01T${data.open_time}:00Z`)
-          : undefined,
-        closeTime: data.close_time
-          ? new Date(`1970-01-01T${data.close_time}:00Z`)
-          : undefined,
-        status: FieldStatus.PENDING,
-        slug: slug,
-        updatedAt: new Date(),
-      },
-    });
-  }
-
-  async deleteField(fieldId: string): Promise<FootballField> {
-    return await this.prisma.footballField.update({
-      where: { id: fieldId },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
-  }
-
   async findById(fieldId: string): Promise<FootballField | null> {
     return await this.prisma.footballField.findUnique({
       where: { id: fieldId },
@@ -159,7 +91,11 @@ export class PrismaFieldRepository implements IFieldRepository {
                   where: { deletedAt: null },
                 },
               },
-              orderBy: [{ dayOfWeek: 'asc' }, { sortOrder: 'asc' }, { startTime: 'asc' }],
+              orderBy: [
+                { dayOfWeek: 'asc' },
+                { sortOrder: 'asc' },
+                { startTime: 'asc' },
+              ],
             },
           },
         },
@@ -188,49 +124,25 @@ export class PrismaFieldRepository implements IFieldRepository {
     });
   }
 
-  // async createFieldImage(
-  //   data: CreateFieldImageDto,
-  //   imageUrl: string,
-  //   imagePublicId: string,
-  // ): Promise<FieldImage> {
-  //   return await this.prisma.fieldImage.create({
-  //     data: {
-  //       footballFieldId: data.footballFieldId,
-  //       url: imageUrl,
-  //       publicId: imagePublicId,
-  //       sortOrder: data.sortOrder,
-  //       isCover: data.isCover,
-  //       createdAt: new Date(),
-  //       updatedAt: new Date(),
-  //     },
-  //   });
-  // }
-
-  async updateFieldImage(
-    fieldImageId: string,
-    data: UpdateFieldImageDto,
-    imageUrl: string,
-    imagePublicId: string,
-  ): Promise<FieldImage> {
-    return await this.prisma.fieldImage.update({
-      where: { id: fieldImageId },
-      data: {
-        url: imageUrl,
-        publicId: imagePublicId,
-        sortOrder: data.sortOrder,
-        isCover: data.isCover,
-        updatedAt: new Date(),
+  async updateFieldStatusWithCascade(
+    fieldId: string,
+    status: FieldStatus,
+  ): Promise<FootballField> {
+    return await this.prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        if (status === FieldStatus.INACTIVE) {
+          await this.inactivateYardsTx(tx, fieldId);
+        }
+        return await tx.footballField.update({
+          where: { id: fieldId, deletedAt: null },
+          data: {
+            status: status,
+            updatedAt: new Date(),
+          },
+        });
       },
-    });
-  }
-
-  async deleteFieldImage(fieldImageId: string): Promise<FieldImage> {
-    return await this.prisma.fieldImage.update({
-      where: { id: fieldImageId },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
+      { timeout: 10000 },
+    );
   }
 
   async findFieldImageById(fieldImageId: string): Promise<FieldImage | null> {
@@ -262,45 +174,53 @@ export class PrismaFieldRepository implements IFieldRepository {
   }
 
   async getAvailability(fieldId: string, date: Date): Promise<any> {
-    return await this.prisma.fieldYard.findMany({
-      where: {
-        footballFieldId: fieldId,
-        status: 'ACTIVE',
-        deletedAt: null,
-      },
-      include: {
-        bookings: {
-          where: {
-            bookingDate: date,
-            status: {
-              in: ['PENDING', 'CONFIRMED'],
-            },
-            deletedAt: null,
-          },
-          select: {
-            startTime: true,
-            endTime: true,
-          },
+  const now = new Date();
+
+  return await this.prisma.fieldYard.findMany({
+    where: {
+      footballFieldId: fieldId,
+      status: 'ACTIVE',
+      deletedAt: null,
+    },
+    include: {
+      bookings: {
+        where: {
+          bookingDate: date,
+          deletedAt: null,
+          OR: [
+            { status: 'CONFIRMED' },
+            { status: 'PENDING' },
+            { status: 'AWAITING_PAYMENT', expiresAt: { gt: now } },
+          ],
         },
-        timeSlots: {
-          where: { deletedAt: null },
-          select: {
-            dayOfWeek: true,
-            startTime: true,
-            endTime: true,
-            label: true,
-            priceRule: {
-              where: { deletedAt: null },
-              select: {
-                price: true,
-              },
-            },
-          },
-          orderBy: [{ dayOfWeek: 'asc' }, { sortOrder: 'asc' }, { startTime: 'asc' }],
+        select: {
+          startTime: true,
+          endTime: true,
         },
       },
-    });
-  }
+      timeSlots: {
+        where: { deletedAt: null },
+        select: {
+          dayOfWeek: true,
+          startTime: true,
+          endTime: true,
+          label: true,
+          priceRule: {
+            where: { deletedAt: null },
+            select: {
+              price: true,
+            },
+          },
+        },
+        orderBy: [
+          { dayOfWeek: 'asc' },
+          { sortOrder: 'asc' },
+          { startTime: 'asc' },
+        ],
+      },
+    },
+  });
+}
 
   async findFieldActiveStatus(
     page: number,
@@ -434,6 +354,143 @@ export class PrismaFieldRepository implements IFieldRepository {
         createdAt: new Date(),
         updatedAt: new Date(),
       })),
+    });
+  }
+
+  // ── Update-field Tx methods ────────────────────────────────────────────────
+
+  async updateFieldTx(
+    tx: Prisma.TransactionClient,
+    fieldId: string,
+    data: Partial<{
+      name: string;
+      description: string | null;
+      categoryId: string;
+      address: string;
+      province: string;
+      district: string;
+      ward: string | null;
+      latitude: number | null;
+      longitude: number | null;
+      openTime: string;
+      closeTime: string;
+      slug: string;
+    }>,
+  ): Promise<FootballField> {
+    return await tx.footballField.update({
+      where: { id: fieldId },
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.description !== undefined && {
+          description: data.description,
+        }),
+        ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
+        ...(data.address !== undefined && { address: data.address }),
+        ...(data.province !== undefined && { province: data.province }),
+        ...(data.district !== undefined && { district: data.district }),
+        ...(data.ward !== undefined && { ward: data.ward }),
+        ...(data.latitude !== undefined && { latitude: data.latitude }),
+        ...(data.longitude !== undefined && { longitude: data.longitude }),
+        ...(data.openTime !== undefined && {
+          openTime: new Date(`1970-01-01T${data.openTime}:00Z`),
+        }),
+        ...(data.closeTime !== undefined && {
+          closeTime: new Date(`1970-01-01T${data.closeTime}:00Z`),
+        }),
+        ...(data.slug !== undefined && { slug: data.slug }),
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async findFieldImagesTx(
+    tx: Prisma.TransactionClient,
+    fieldId: string,
+  ): Promise<FieldImage[]> {
+    return await tx.fieldImage.findMany({
+      where: { footballFieldId: fieldId, deletedAt: null },
+    });
+  }
+
+  async deleteImagesTx(
+    tx: Prisma.TransactionClient,
+    imageIds: string[],
+  ): Promise<void> {
+    if (imageIds.length === 0) return;
+    await tx.fieldImage.updateMany({
+      where: { id: { in: imageIds } },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  async hasActiveBookingsForFieldTx(
+    tx: Prisma.TransactionClient,
+    fieldId: string,
+  ): Promise<boolean> {
+    const count = await tx.booking.count({
+      where: {
+        deletedAt: null,
+        status: { in: ['PENDING', 'CONFIRMED'] },
+        fieldYard: {
+          footballFieldId: fieldId,
+          deletedAt: null,
+        },
+      },
+    });
+    return count > 0;
+  }
+
+  async softDeleteFieldTx(
+    tx: Prisma.TransactionClient,
+    fieldId: string,
+  ): Promise<FootballField> {
+    const now = new Date();
+
+    // cascade soft-delete price rules → time slots → yards
+    const yards = await tx.fieldYard.findMany({
+      where: { footballFieldId: fieldId, deletedAt: null },
+      select: { id: true },
+    });
+    const yardIds = yards.map((y) => y.id);
+
+    if (yardIds.length > 0) {
+      const slots = await tx.fieldTimeSlot.findMany({
+        where: { fieldYardId: { in: yardIds }, deletedAt: null },
+        select: { id: true },
+      });
+      const slotIds = slots.map((s) => s.id);
+
+      if (slotIds.length > 0) {
+        await tx.fieldPriceRule.updateMany({
+          where: { timeSlotId: { in: slotIds }, deletedAt: null },
+          data: { deletedAt: now },
+        });
+        await tx.fieldTimeSlot.updateMany({
+          where: { id: { in: slotIds } },
+          data: { deletedAt: now },
+        });
+      }
+
+      await tx.fieldYard.updateMany({
+        where: { id: { in: yardIds } },
+        data: { deletedAt: now },
+      });
+    }
+
+    // TODO: Permanent Delete Flow sẽ cleanup Cloudinary sau.
+    return await tx.footballField.update({
+      where: { id: fieldId },
+      data: { deletedAt: now },
+    });
+  }
+
+  async inactivateYardsTx(
+    tx: Prisma.TransactionClient,
+    fieldId: string,
+  ): Promise<void> {
+    await tx.fieldYard.updateMany({
+      where: { footballFieldId: fieldId, deletedAt: null },
+      data: { status: 'INACTIVE', updatedAt: new Date() },
     });
   }
 }

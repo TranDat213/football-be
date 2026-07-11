@@ -1,14 +1,19 @@
-import {
-  OAuthDto,
-  SignUpDto,
-} from '../dto/auth.dto';
-import { User} from '@prisma/client';
+import { OAuthDto, OtpPurpose, SignUpDto } from '../dto/auth.dto';
+import { User } from '@prisma/client';
 
 export interface OtpData {
-    otpHash: string;
-    expiresAt: number;
-    attempts: number;
-    lastSentAt: number;
+  otpHash: string;
+  expiresAt: number;
+  attempts: number;
+  lastSentAt: number;
+  purpose: OtpPurpose;
+  pendingSignUp?: {
+    first_name: string;
+    last_name: string;
+    user_name?: string;
+    email: string;
+    password: string; // đã hash
+  };
 }
 export interface IAuthRepository {
   createUser(data: SignUpDto): Promise<User>;

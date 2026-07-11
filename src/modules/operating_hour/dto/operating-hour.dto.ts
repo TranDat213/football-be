@@ -30,33 +30,6 @@ export class IsBeforeTimeConstraint implements ValidatorConstraintInterface {
   }
 }
 
-export class CreateFieldTimeSlotDto {
-  @IsInt()
-  @Min(0)
-  @Max(6)
-  dayOfWeek!: number;
-
-  @IsString()
-  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'startTime must be a valid time in HH:mm format',
-  })
-  @Validate(IsBeforeTimeConstraint, ['endTime'])
-  startTime!: string;
-
-  @IsString()
-  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'endTime must be a valid time in HH:mm format',
-  })
-  endTime!: string;
-
-  @IsEnum(TimeSlotLabel)
-  label!: TimeSlotLabel;
-
-  @IsInt()
-  @Min(0)
-  @IsOptional()
-  sortOrder?: number;
-}
 
 export class UpdateFieldTimeSlotDto {
   @IsInt()
@@ -89,5 +62,4 @@ export class UpdateFieldTimeSlotDto {
   sortOrder?: number;
 }
 
-export { CreateFieldTimeSlotDto as CreateFieldOperatingHourDto };
 export { UpdateFieldTimeSlotDto as UpdateFieldOperatingHourDto };

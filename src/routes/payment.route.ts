@@ -33,8 +33,7 @@ const transactionManager = new PrismaTransactionManager(prisma);
 
 const paymentService = new PaymentService(paymentBookingRepo, paymentRepo, commissionRepo, vnpayService, emailService, transactionManager);
 const refundService = new RefundService(prisma);
-const bookingService = new BookingService(bookingRepository, emailService, prisma, refundService);
-const paymentController = new PaymentController(vnpayService, paymentService, bookingService);
+const paymentController = new PaymentController( paymentService);
 const refundController = new RefundController(refundService);
 
 // ─── Payment Routes ───────────────────────────────────────────────────────────

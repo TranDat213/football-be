@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import {
   ForgotPasswordDto,
   OAuthDto,
+  RequestOtpDto,
   SignInDto,
   SignUpDto,
   VerifyOtpDto,
@@ -79,7 +80,8 @@ export class AuthController {
     }
 
     try {
-      const decoded = await this.authService.verifyRefreshToken(refreshTokenValue);
+      const decoded =
+        await this.authService.verifyRefreshToken(refreshTokenValue);
       setJwtAuthCookie({
         res,
         userId: decoded.userId,
@@ -88,13 +90,15 @@ export class AuthController {
         message: 'Refresh token successfully',
       });
     } catch (error) {
-      return res.status(401).json({ message: 'Invalid or expired refresh token' });
+      return res
+        .status(401)
+        .json({ message: 'Invalid or expired refresh token' });
     }
   }
 
   async requestOtp(req: Request, res: Response, _next: NextFunction) {
-    const email = req.body.email as string;
-    await this.authService.requestOtp(email);
+    const dto = req.body as RequestOtpDto;
+    await this.authService.requestOtp(dto);
     return res.status(200).json({
       message: 'OTP sent successfully',
     });
@@ -102,9 +106,10 @@ export class AuthController {
 
   async verifyOtp(req: Request, res: Response, _next: NextFunction) {
     const dto = req.body as VerifyOtpDto;
-    await this.authService.veriFyOtp(dto);
+    const result = await this.authService.veriFyOtp(dto);
     return res.status(200).json({
       message: 'OTP verified successfully',
+      data: result,
     });
   }
 }

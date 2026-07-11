@@ -1,37 +1,19 @@
 import { NextFunction, Request, Response } from 'express';
-import { VNPayService } from './vnpay.service';
 import { PaymentService } from './payment.service';
-import { BadRequestException } from '../../../utils/app-error';
-import { BookingService } from '../../booking/application/booking.service';
 
 export class PaymentController {
   constructor(
-    private readonly vnpayService: VNPayService,
     private readonly paymentService: PaymentService,
-    private readonly bookingService: BookingService,
   ) {}
 
   async createPayment(req: Request, res: Response, _next: NextFunction) {
     const { bookingId, paymentMethod } = req.body;
-    const booking = await this.bookingService.getBookingById(bookingId);
+    const ip = req.ip || '127.0.0.1';
 
-    if (booking.status !== 'PENDING') {
-      throw new BadRequestException('Đơn hàng đã được thanh toán hoặc không còn khả dụng');
-    }
+    const result = await this.paymentService.createPayment(bookingId, paymentMethod, ip);
 
-    if (paymentMethod === 'VNPAY') {
-      const ip = req.ip || '127.0.0.1';
-      const paymentUrl = this.vnpayService.createPaymentUrl(ip, booking.id, Number(booking.totalPrice));
-      return res.status(200).json({ success: true, paymentUrl });
-    }
-
-    if (paymentMethod === 'CASH') {
-      return res.status(200).json({ success: true, message: 'Vui lòng thanh toán tại quầy' });
-    }
-
-    return res.status(200).json({ success: true, message: `Phương thức ${paymentMethod} đang được phát triển` });
+    return res.status(200).json({ success: true, ...result });
   }
-
   /**
    * VNPay IPN handler — called server-to-server by VNPay.
    * Idempotent: delegates to PaymentService which guards duplicate processing.

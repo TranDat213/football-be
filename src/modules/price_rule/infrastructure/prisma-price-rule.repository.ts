@@ -1,9 +1,5 @@
 import { PrismaClient, FieldPriceRule, Prisma } from '@prisma/client';
 import { IPriceRuleRepository } from '../domain/price-rule.repository';
-import {
-  CreateFieldPriceRuleDto,
-  UpdateFieldPriceRuleDto,
-} from '../dto/price-rule.dto';
 import { PriceRuleCompleteDto } from '@/modules/field/dto/create-field-complete.dto';
 
 export class PrismaPriceRuleRepository implements IPriceRuleRepository {
@@ -24,35 +20,6 @@ export class PrismaPriceRuleRepository implements IPriceRuleRepository {
       },
     });
     return !!slot;
-  }
-
-  async create(data: CreateFieldPriceRuleDto): Promise<FieldPriceRule> {
-    return this.prisma.fieldPriceRule.create({
-      data: {
-        timeSlotId: data.timeSlotId,
-        price: data.price,
-      },
-    });
-  }
-
-  async update(
-    id: string,
-    data: UpdateFieldPriceRuleDto,
-  ): Promise<FieldPriceRule> {
-    return this.prisma.fieldPriceRule.update({
-      where: { id },
-      data: {
-        timeSlotId: data.timeSlotId,
-        price: data.price,
-      },
-    });
-  }
-
-  async delete(id: string): Promise<FieldPriceRule> {
-    return this.prisma.fieldPriceRule.update({
-      where: { id },
-      data: { deletedAt: new Date() },
-    });
   }
 
   async findById(id: string): Promise<FieldPriceRule | null> {
@@ -82,6 +49,17 @@ export class PrismaPriceRuleRepository implements IPriceRuleRepository {
         createdAt: new Date(),
         updatedAt: new Date(),
       },
+    });
+  }
+
+  async deletePriceRulesTx(
+    tx: Prisma.TransactionClient,
+    slotIds: string[],
+  ): Promise<void> {
+    if (slotIds.length === 0) return;
+    await tx.fieldPriceRule.updateMany({
+      where: { timeSlotId: { in: slotIds }, deletedAt: null },
+      data: { deletedAt: new Date() },
     });
   }
 }

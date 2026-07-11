@@ -12,6 +12,7 @@ import { priceRuleRouter } from './price-rule.route';
 import fieldYardRouter from './field-yard.route';
 import chatRouter from './chat.route';
 import casualMatchRouter from './casual-match.route';
+import fieldUpdateRouter from './field-update.route';
 
 const routers = Router();
 
@@ -28,4 +29,5 @@ routers.use('/price-rules', priceRuleRouter);
 routers.use('/field-yards', fieldYardRouter);
 routers.use('/chat', chatRouter);
 routers.use('/casual-matches', casualMatchRouter);
+routers.use('/field-update', fieldUpdateRouter);
 export default routers;

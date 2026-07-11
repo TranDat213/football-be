@@ -84,4 +84,11 @@ bookingRouter.get(
   asyncHandler(bookingController.countBookingByDate.bind(bookingController)),
 );
 
+bookingRouter.post(
+  '/yards/:fieldYardId/offline',
+  authenticate,
+  authorize(UserRole.OWNER),
+  asyncHandler(bookingController.createOfflineBooking.bind(bookingController)),
+);
+
 export default bookingRouter;

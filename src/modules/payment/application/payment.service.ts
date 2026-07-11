@@ -1,5 +1,5 @@
-import { PaymentStatus } from '@prisma/client';
-import { NotFoundException } from '../../../utils/app-error';
+import { BookingStatus, PaymentStatus } from '@prisma/client';
+import { BadRequestException, NotFoundException } from '../../../utils/app-error';
 import { EmailService } from '../../booking/infrastructure/email.service';
 import { VNPayService } from './vnpay.service';
 import { format } from 'date-fns';
@@ -8,6 +8,10 @@ import { PaymentRepository } from '../domain/repositories/payment.repository';
 import { CommissionRepository } from '../domain/repositories/commission.repository';
 import { TransactionManager } from '../domain/repositories/transaction.manager';
 
+export interface CreatePaymentResult {
+  paymentUrl?: string;
+  message: string;
+}
 export class PaymentService {
   constructor(
     private readonly bookingRepository: BookingRepository,
@@ -18,6 +22,52 @@ export class PaymentService {
     private readonly transactionManager: TransactionManager
   ) {}
 
+  async createPayment(
+    bookingId: string,
+    paymentMethod: string,
+    ip: string,
+  ): Promise<CreatePaymentResult> {
+    const booking = await this.bookingRepository.findByIdWithLock(bookingId);
+    if (!booking) throw new NotFoundException('Không tìm thấy đơn đặt sân');
+
+    if (paymentMethod === 'CASH') {
+      this.validateCashPayment(booking);
+      return { message: 'Vui lòng thanh toán tại quầy' };
+    }
+
+    this.validateOnlinePayment(booking);
+
+    if (paymentMethod === 'VNPAY') {
+      const paymentUrl = this.vnpayService.createPaymentUrl(
+        ip,
+        booking.id,
+        Number(booking.totalPrice),
+      );
+      return { paymentUrl, message: 'Tạo đường dẫn thanh toán thành công' };
+    }
+
+    return { message: `Phương thức ${paymentMethod} đang được phát triển` };
+  }
+
+  private validateCashPayment(booking: any) {
+    if (booking.status !== BookingStatus.PENDING) {
+      throw new BadRequestException(
+        'Đơn hàng này không phải đặt trả sau, không thể xác nhận thanh toán tiền mặt',
+      );
+    }
+  }
+
+  private validateOnlinePayment(booking: any) {
+    if (booking.status !== BookingStatus.AWAITING_PAYMENT) {
+      throw new BadRequestException(
+        'Đơn hàng đã được thanh toán, đã huỷ, hoặc không phải đơn thanh toán online',
+      );
+    }
+
+    if (booking.expiresAt && new Date(booking.expiresAt) < new Date()) {
+      throw new BadRequestException('Đã hết thời gian giữ chỗ, vui lòng đặt lại');
+    }
+  }
   private async completeVNPayPayment(
     bookingId: string,
     vnpParams: any,
@@ -33,6 +83,10 @@ export class PaymentService {
       }
 
       // 3. Update booking status
+      if (booking.status !== BookingStatus.AWAITING_PAYMENT) {
+        return { alreadyProcessed: false, expired: true };
+      }
+
       await this.bookingRepository.updateStatus(bookingId, 'CONFIRMED', PaymentStatus.PAID, tx);
 
       // 4. Create or update payment record
@@ -55,8 +109,8 @@ export class PaymentService {
         await this.commissionRepository.create(
           {
             bookingId,
-            amount: Number(booking.totalPrice) * 0.1,
-            percentage: 10,
+            amount: Number(booking.totalPrice) * 0.01,
+            percentage: 1,
           },
           tx
         );

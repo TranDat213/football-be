@@ -8,6 +8,9 @@ import { Env } from './config/env.config';
 import routers from './routes';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
+import { errorHandler } from './middleware/error-handler.middleware';
+import { registerBookingLockCleanupJob } from './modules/booking/infrastructure/booking-lock-cleanup.job';
+import prisma from './lib/prisma';
 
 const app = express();
 
@@ -15,7 +18,7 @@ app.use(
   cors({
     origin: Env.CLIENT_URL,
     credentials: true,
-  })
+  }),
 );
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -27,7 +30,12 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 app.use('/api', routers);
+
+app.use(errorHandler);
+registerBookingLockCleanupJob(prisma);
 
 const PORT = Env.PORT || 5000;
 
@@ -35,9 +43,4 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
-app.use(
-  '/api-docs',
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpec)
-);
 export default app;
