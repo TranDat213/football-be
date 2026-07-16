@@ -31,4 +31,9 @@ export const Env = {
 
     LOCK_TTL_MINUTES: getEnv('LOCK_TTL_MINUTES'),
     CUTOFF_MINUTES: getEnv('CUTOFF_MINUTES'),
+
+    //Chatbot
+    CHAT_MODEL: getEnv('CHAT_MODEL'),
+    GEMINI_API_KEY: getEnv('GEMINI_API_KEY'),
+    EMBEDDING_MODEL: getEnv('EMBEDDING_MODEL'),
 } as const;

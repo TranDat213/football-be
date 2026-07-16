@@ -11,13 +11,11 @@ export class ChatController {
         return;
       }
 
-      const reply = await ChatService.handleChat(messages);
-      
-      res.status(200).json({
-        message: reply
-      });
+      const userId = req.user?.id;
+      const reply = await ChatService.handleChat(messages, userId);
+
+      res.status(200).json(reply);
     } catch (error: any) {
-      console.error(error);
       res.status(500).json({ error: error.message });
     }
   }

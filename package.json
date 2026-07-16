@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc && npx tsc-alias",
     "dev": "nodemon --exec ts-node --require tsconfig-paths/register src/app.ts",
-    "start": "node dist/src/app.js"
+    "start": "node dist/src/app.js",
+    "seed:chatbot": "ts-node --require tsconfig-paths/register prisma/seeds/seed-chatbot-docs.ts"
   },
   "keywords": [],
   "author": "",

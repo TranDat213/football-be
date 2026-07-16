@@ -7,7 +7,11 @@ import prisma from '@/lib/prisma';
 
 const authRepository = new PrismaAuthRepository(prisma);
 
-export const authenticate = async (req: Request, _res: Response, next: NextFunction) => {
+export const authenticate = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) => {
   try {
     const token = req.cookies.accessToken;
 
@@ -32,4 +36,32 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
   } catch (error) {
     return next(new UnauthorizedException('Invalid or expired token'));
   }
+};
+
+export const authenticateOptional = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const token = req.cookies?.accessToken;
+
+    if (!token) {
+      return next();
+    }
+
+    const decoded = jwt.verify(token, Env.JWT_SECRET) as { userId: string };
+    const user = await authRepository.findUserById(decoded.userId);
+
+    if (user) {
+      req.user = {
+        id: user.id.toString(),
+        email: user.email!,
+        role: user.role,
+      };
+    }
+  } catch (error) {
+    // Ignore verification errors for optional auth
+  }
+  next();
 };
