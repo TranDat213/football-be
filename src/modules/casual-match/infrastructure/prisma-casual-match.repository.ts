@@ -78,40 +78,80 @@ export class PrismaCasualMatchRepository implements ICasualMatchRepository {
       bookingDate,
       skillLevel,
       keyword,
+      category,
+      yardType,
+      startTime,
+      maxSlotPrice,
+      minSlotsAvailable,
+      status,
+      sortBy,
+      sortOrder,
       page = 1,
       limit = 10,
     } = filter;
 
     const where: Prisma.CasualMatchWhereInput = {
-      status: CasualMatchStatus.OPEN,
+      status: status ? (status as any) : CasualMatchStatus.OPEN,
       visibility: 'PUBLIC',
       deletedAt: null,
       booking: {
         deletedAt: null,
         fieldYard: {
           footballField: {
-            ...(province && { province }),
-            ...(district && { district }),
+            ...(province && { province: { contains: province, mode: 'insensitive' } }),
+            ...(district && { district: { contains: district, mode: 'insensitive' } }),
             ...(footballFieldId && { id: footballFieldId }),
+            ...(category && {
+              OR: [
+                { categoryId: category },
+                { category: { slug: category } }
+              ]
+            }),
           },
+          ...(yardType && { type: yardType as any }),
         },
         ...(bookingDate && { bookingDate: new Date(bookingDate) }),
+        ...(startTime && { startTime: new Date(`1970-01-01T${startTime}:00Z`) }),
       },
       ...(skillLevel && { skillLevel: skillLevel as any }),
-      ...(keyword && {
-        OR: [
-          { title: { contains: keyword, mode: 'insensitive' } },
-          { description: { contains: keyword, mode: 'insensitive' } },
-        ],
-      }),
+      ...(maxSlotPrice !== undefined && { slotPrice: { lte: maxSlotPrice } }),
+      ...(minSlotsAvailable !== undefined && { availableSlots: { gte: minSlotsAvailable } }),
     };
+
+    if (keyword) {
+      where.OR = [
+        { title: { contains: keyword, mode: 'insensitive' } },
+        { description: { contains: keyword, mode: 'insensitive' } },
+        {
+          booking: {
+            fieldYard: {
+              footballField: {
+                OR: [
+                  { name: { contains: keyword, mode: 'insensitive' } },
+                  { address: { contains: keyword, mode: 'insensitive' } },
+                ]
+              }
+            }
+          }
+        }
+      ];
+    }
+
+    let orderBy: Prisma.CasualMatchOrderByWithRelationInput = { booking: { bookingDate: 'asc' } };
+    if (sortBy === 'price') {
+      orderBy = { slotPrice: sortOrder || 'asc' };
+    } else if (sortBy === 'newest') {
+      orderBy = { createdAt: sortOrder || 'desc' };
+    } else if (sortBy === 'date') {
+      orderBy = { booking: { bookingDate: sortOrder || 'asc' } };
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.casualMatch.findMany({
         where,
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: { booking: { bookingDate: 'asc' } },
+        orderBy,
         include: {
           booking: {
             include: {

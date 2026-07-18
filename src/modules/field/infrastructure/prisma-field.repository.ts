@@ -1,4 +1,9 @@
-import { IFieldRepository } from '../domain/field.repository';
+import {
+  FieldActiveFilter,
+  FieldOwnerFilter,
+  FieldPendingFilter,
+  IFieldRepository,
+} from '../domain/field.repository';
 import {
   FieldCategory,
   FieldImage,
@@ -17,48 +22,76 @@ export class PrismaFieldRepository implements IFieldRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   async findByOwnerId(
-    page: number,
-    limit: number,
     ownerId: string,
-  ): Promise<FootballField[]> {
-    return await this.prisma.footballField.findMany({
-      where: { ownerId: ownerId, deletedAt: null },
-      include: {
-        yards: {
-          where: {
-            deletedAt: null,
-          },
-          include: {
-            timeSlots: {
-              where: {
-                deletedAt: null,
-              },
-              include: {
-                priceRule: {
-                  where: { deletedAt: null },
+    filter: FieldOwnerFilter,
+  ): Promise<{ data: FootballField[]; total: number }> {
+    const page = filter.page || 1;
+    const limit = filter.limit || 10;
+
+    const where: Prisma.FootballFieldWhereInput = {
+      ownerId: ownerId,
+      deletedAt: null,
+      district: filter.district ? { contains: filter.district, mode: 'insensitive' } : undefined,
+      status: filter.status ? (filter.status as FieldStatus) : undefined,
+    };
+
+    if (filter.keyword) {
+      where.OR = [
+        { name: { contains: filter.keyword, mode: 'insensitive' } },
+        { address: { contains: filter.keyword, mode: 'insensitive' } },
+      ];
+    }
+
+    let orderBy: Prisma.FootballFieldOrderByWithRelationInput = { createdAt: 'desc' };
+    if (filter.sortBy === 'name') {
+      orderBy = { name: filter.sortOrder || 'asc' };
+    } else if (filter.sortBy === 'status') {
+      orderBy = { status: filter.sortOrder || 'asc' };
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.footballField.findMany({
+        where,
+        include: {
+          yards: {
+            where: {
+              deletedAt: null,
+            },
+            include: {
+              timeSlots: {
+                where: {
+                  deletedAt: null,
                 },
+                include: {
+                  priceRule: {
+                    where: { deletedAt: null },
+                  },
+                },
+                orderBy: [
+                  { dayOfWeek: 'asc' },
+                  { sortOrder: 'asc' },
+                  { startTime: 'asc' },
+                ],
               },
-              orderBy: [
-                { dayOfWeek: 'asc' },
-                { sortOrder: 'asc' },
-                { startTime: 'asc' },
-              ],
+            },
+          },
+          images: {
+            where: {
+              deletedAt: null,
+            },
+            orderBy: {
+              sortOrder: 'asc',
             },
           },
         },
-        images: {
-          where: {
-            deletedAt: null,
-          },
-          orderBy: {
-            sortOrder: 'asc',
-          },
-        },
-      },
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-    });
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy,
+      }),
+      this.prisma.footballField.count({ where }),
+    ]);
+
+    return { data, total };
   }
 
   async findOwner(ownerId: string): Promise<User | null> {
@@ -223,53 +256,226 @@ export class PrismaFieldRepository implements IFieldRepository {
 }
 
   async findFieldActiveStatus(
-    page: number,
-    limit: number,
-  ): Promise<FootballField[]> {
-    return await this.prisma.footballField.findMany({
-      where: { status: FieldStatus.ACTIVE, deletedAt: null },
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        images: true,
-        yards: {
-          include: {
-            timeSlots: { include: { priceRule: true } },
+    filter: FieldActiveFilter,
+  ): Promise<{ data: FootballField[]; total: number }> {
+    const page = filter.page || 1;
+    const limit = filter.limit || 10;
+
+    const where: Prisma.FootballFieldWhereInput = {
+      status: FieldStatus.ACTIVE,
+      deletedAt: null,
+      province: filter.province ? { contains: filter.province, mode: 'insensitive' } : undefined,
+      district: filter.district ? { contains: filter.district, mode: 'insensitive' } : undefined,
+      ward: filter.ward ? { contains: filter.ward, mode: 'insensitive' } : undefined,
+      categoryId: filter.category ? filter.category : undefined,
+    };
+
+    if (filter.keyword) {
+      where.OR = [
+        { name: { contains: filter.keyword, mode: 'insensitive' } },
+        { address: { contains: filter.keyword, mode: 'insensitive' } },
+        {
+          yards: {
+            some: {
+              name: { contains: filter.keyword, mode: 'insensitive' },
+              deletedAt: null,
+            },
           },
         },
-      },
-    });
+      ];
+    }
+
+    const yardConditions: Prisma.FieldYardWhereInput[] = [{ deletedAt: null }];
+    if (filter.yardType) {
+      yardConditions.push({ type: filter.yardType as any });
+    }
+    if (filter.minPrice !== undefined || filter.maxPrice !== undefined) {
+      yardConditions.push({
+        timeSlots: {
+          some: {
+            deletedAt: null,
+            priceRule: {
+              price: {
+                gte: filter.minPrice,
+                lte: filter.maxPrice,
+              },
+            },
+          },
+        },
+      });
+    }
+
+    if (yardConditions.length > 1) {
+      where.yards = {
+        some: {
+          AND: yardConditions,
+        },
+      };
+    } else {
+      where.yards = {
+        some: {
+          deletedAt: null,
+        },
+      };
+    }
+
+    const isSortByPrice = filter.sortBy === 'price';
+
+    let orderBy: Prisma.FootballFieldOrderByWithRelationInput = { createdAt: 'desc' };
+    if (filter.sortBy === 'name') {
+      orderBy = { name: filter.sortOrder || 'asc' };
+    } else if (filter.sortBy === 'newest') {
+      orderBy = { createdAt: filter.sortOrder || 'desc' };
+    }
+
+    if (isSortByPrice) {
+      const allFields = await this.prisma.footballField.findMany({
+        where,
+        include: {
+          images: {
+            where: { deletedAt: null },
+            orderBy: { sortOrder: 'asc' },
+          },
+          yards: {
+            where: { deletedAt: null },
+            include: {
+              timeSlots: {
+                where: { deletedAt: null },
+                include: { priceRule: { where: { deletedAt: null } } },
+              },
+            },
+          },
+        },
+      });
+
+      const fieldsWithPrice = allFields.map((field) => {
+        let minPrice = Infinity;
+        for (const yard of field.yards) {
+          for (const slot of yard.timeSlots) {
+            if (slot.priceRule) {
+              const val = Number(slot.priceRule.price);
+              if (val < minPrice) minPrice = val;
+            }
+          }
+        }
+        return { field, minPrice: minPrice === Infinity ? null : minPrice };
+      });
+
+      fieldsWithPrice.sort((a, b) => {
+        const pA = a.minPrice ?? 99999999;
+        const pB = b.minPrice ?? 99999999;
+        return filter.sortOrder === 'desc' ? pB - pA : pA - pB;
+      });
+
+      const total = fieldsWithPrice.length;
+      const paginated = fieldsWithPrice
+        .slice((page - 1) * limit, page * limit)
+        .map((x) => x.field);
+
+      return { data: paginated, total };
+    } else {
+      const [data, total] = await Promise.all([
+        this.prisma.footballField.findMany({
+          where,
+          include: {
+            images: {
+              where: { deletedAt: null },
+              orderBy: { sortOrder: 'asc' },
+            },
+            yards: {
+              where: { deletedAt: null },
+              include: {
+                timeSlots: {
+                  where: { deletedAt: null },
+                  include: { priceRule: { where: { deletedAt: null } } },
+                },
+              },
+            },
+          },
+          skip: (page - 1) * limit,
+          take: limit,
+          orderBy,
+        }),
+        this.prisma.footballField.count({ where }),
+      ]);
+
+      return { data, total };
+    }
   }
 
   async findFieldPendingStatus(
-    page: number,
-    limit: number,
-  ): Promise<FootballField[]> {
-    return await this.prisma.footballField.findMany({
-      where: { status: FieldStatus.PENDING, deletedAt: null },
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        images: true,
-        yards: {
-          include: {
-            timeSlots: { include: { priceRule: true } },
+    filter: FieldPendingFilter,
+  ): Promise<{ data: FootballField[]; total: number }> {
+    const page = filter.page || 1;
+    const limit = filter.limit || 10;
+
+    const where: Prisma.FootballFieldWhereInput = {
+      status: FieldStatus.PENDING,
+      deletedAt: null,
+      province: filter.province ? { contains: filter.province, mode: 'insensitive' } : undefined,
+      district: filter.district ? { contains: filter.district, mode: 'insensitive' } : undefined,
+    };
+
+    if (filter.keyword) {
+      where.OR = [
+        { name: { contains: filter.keyword, mode: 'insensitive' } },
+        { address: { contains: filter.keyword, mode: 'insensitive' } },
+        {
+          owner: {
+            OR: [
+              { firstName: { contains: filter.keyword, mode: 'insensitive' } },
+              { lastName: { contains: filter.keyword, mode: 'insensitive' } },
+              { email: { contains: filter.keyword, mode: 'insensitive' } },
+              { phone: { contains: filter.keyword, mode: 'insensitive' } },
+            ],
           },
         },
-        owner: {
-          // thêm dòng này
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
+      ];
+    }
+
+    let orderBy: Prisma.FootballFieldOrderByWithRelationInput = { createdAt: 'desc' };
+    if (filter.sortBy === 'name') {
+      orderBy = { name: filter.sortOrder || 'asc' };
+    } else if (filter.sortBy === 'createdAt') {
+      orderBy = { createdAt: filter.sortOrder || 'desc' };
+    } else if (filter.sortBy === 'oldest') {
+      orderBy = { createdAt: 'asc' };
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.footballField.findMany({
+        where,
+        include: {
+          images: {
+            where: { deletedAt: null },
+          },
+          yards: {
+            where: { deletedAt: null },
+            include: {
+              timeSlots: {
+                where: { deletedAt: null },
+                include: { priceRule: { where: { deletedAt: null } } },
+              },
+            },
+          },
+          owner: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
           },
         },
-      },
-    });
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy,
+      }),
+      this.prisma.footballField.count({ where }),
+    ]);
+
+    return { data, total };
   }
 
   async getFieldStatics(): Promise<any> {

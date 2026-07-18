@@ -17,12 +17,46 @@ import {
 } from '../dto/create-field-complete.dto';
 import { CreateFootballFieldResult } from '../application/create-football-field.usecase';
 
+export interface FieldActiveFilter {
+  page?: number;
+  limit?: number;
+  keyword?: string;
+  category?: string;
+  yardType?: string;
+  province?: string;
+  district?: string;
+  ward?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface FieldPendingFilter {
+  page?: number;
+  limit?: number;
+  keyword?: string;
+  province?: string;
+  district?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface FieldOwnerFilter {
+  page?: number;
+  limit?: number;
+  keyword?: string;
+  district?: string;
+  status?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
 export interface IFieldRepository {
   findByOwnerId(
-    page: number,
-    limit: number,
     ownerId: string,
-  ): Promise<FootballField[]>;
+    filter: FieldOwnerFilter,
+  ): Promise<{ data: FootballField[]; total: number }>;
   findOwner(ownerId: string): Promise<User | null>;
   findCategoryById(categoryId: string): Promise<FieldCategory | null>;
   findById(fieldId: string): Promise<FootballField | null>;
@@ -37,8 +71,12 @@ export interface IFieldRepository {
     status: FieldStatus,
   ): Promise<FootballField>;
 
-  findFieldActiveStatus(page: number, limit: number): Promise<FootballField[]>;
-  findFieldPendingStatus(page: number, limit: number): Promise<FootballField[]>;
+  findFieldActiveStatus(
+    filter: FieldActiveFilter,
+  ): Promise<{ data: FootballField[]; total: number }>;
+  findFieldPendingStatus(
+    filter: FieldPendingFilter,
+  ): Promise<{ data: FootballField[]; total: number }>;
   getFieldStatics(): Promise<any>;
 
   findFieldImageById(fieldImageId: string): Promise<FieldImage | null>;

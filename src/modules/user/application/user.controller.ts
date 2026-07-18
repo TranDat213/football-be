@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { UserService } from './user.service';
 import 'multer';
 import { AddOwnerDto, OwnerRegisterDto, UpdateOwnerRegisterStatusDto, UpdateRoleDto, UpdateUserStatusDto } from '../dto/user.dto';
+import { toPaginatedResult } from '@/utils/pagination';
 export class UserController {
   constructor(private readonly userService: UserService) {}
   async getProfileById(req: Request, res: Response, _next: NextFunction) {
@@ -132,36 +133,33 @@ export class UserController {
   async getAllUsers(req: Request, res: Response, _next: NextFunction) {
     const limit = Number(req.query.limit) || 10;
     const page = Number(req.query.page) || 1;
-    const users = await this.userService.getAllUsers(limit, page);
+    const { keyword, sortBy, sortOrder } = req.query;
+    const result = await this.userService.getAllUsers(limit, page, { keyword, sortBy, sortOrder });
     return res.status(200).json({
       message: 'Get all users successfully',
-      data: {
-        users,
-      },
+      ...toPaginatedResult(result.data, result.total, page, limit),
     });
   }
 
   async getAllOwners(req: Request, res: Response, _next: NextFunction) {
     const limit = Number(req.query.limit) || 10;
     const page = Number(req.query.page) || 1;
-    const owners = await this.userService.getAllOwners(limit, page);
+    const { keyword, sortBy, sortOrder, status } = req.query;
+    const result = await this.userService.getAllOwners(limit, page, { keyword, sortBy, sortOrder, status });
     return res.status(200).json({
       message: 'Get all owners successfully',
-      data: {
-        owners,
-      },
+      ...toPaginatedResult(result.data, result.total, page, limit),
     });
   }
 
   async getAllAccounts(req: Request, res: Response, _next: NextFunction) {
     const limit = Number(req.query.limit) || 10;
     const page = Number(req.query.page) || 1;
-    const accounts = await this.userService.getAllAccounts(limit, page);
+    const { keyword, sortBy, sortOrder } = req.query;
+    const result = await this.userService.getAllAccounts(limit, page, { keyword, sortBy, sortOrder });
     return res.status(200).json({
       message: 'Get all accounts successfully',
-      data: {
-        accounts,
-      },
+      ...toPaginatedResult(result.data, result.total, page, limit),
     });
   }
 

@@ -31,10 +31,21 @@ export class CasualMatchController {
       bookingDate: req.query.bookingDate as string | undefined,
       skillLevel: req.query.skillLevel as string | undefined,
       keyword: req.query.keyword as string | undefined,
+      category: req.query.category as string | undefined,
+      yardType: req.query.yardType as string | undefined,
+      startTime: req.query.startTime as string | undefined,
+      maxSlotPrice: req.query.maxSlotPrice ? Number(req.query.maxSlotPrice) : undefined,
+      minSlotsAvailable: req.query.minSlotsAvailable ? Number(req.query.minSlotsAvailable) : undefined,
+      status: req.query.status as string | undefined,
+      sortBy: req.query.sortBy as string | undefined,
+      sortOrder: req.query.sortOrder as 'asc' | 'desc' | undefined,
       page,
       limit,
     });
-    return res.status(200).json({ message: 'Danh sách Casual Match', ...result });
+    return res.status(200).json({
+      message: 'Danh sách Casual Match',
+      ...result,
+    });
   }
 
   // GET /casual-matches/host

@@ -49,51 +49,113 @@ export class PrismaBookingRepository implements IBookingRepository {
     });
   }
 
-  async findByUserId(userId: string, filter: any): Promise<Booking[]> {
-    const { page = 1, limit = 10, status } = filter;
-    return await this.prisma.booking.findMany({
-      where: {
-        userId,
-        status: status || undefined,
-        deletedAt: null,
-      },
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        fieldYard: {
-          include: {
-            footballField: true,
+  async findByUserId(userId: string, filter: any): Promise<{ data: Booking[]; total: number }> {
+    const page = parseInt(filter.page) || 1;
+    const limit = parseInt(filter.limit) || 10;
+
+    const where: any = {
+      userId,
+      deletedAt: null,
+      status: filter.status || undefined,
+      bookingDate: filter.bookingDate ? new Date(filter.bookingDate) : undefined,
+      startTime: filter.startTime ? new Date(`1970-01-01T${filter.startTime}:00Z`) : undefined,
+    };
+
+    const fieldYardConditions: any = {};
+    if (filter.yardType) {
+      fieldYardConditions.type = filter.yardType;
+    }
+
+    const fieldConditions: any = {};
+    if (filter.footballFieldId) {
+      fieldConditions.id = filter.footballFieldId;
+    }
+    if (filter.category) {
+      fieldConditions.OR = [
+        { categoryId: filter.category },
+        { category: { slug: filter.category } }
+      ];
+    }
+
+    if (Object.keys(fieldConditions).length > 0) {
+      fieldYardConditions.footballField = fieldConditions;
+    }
+
+    if (Object.keys(fieldYardConditions).length > 0) {
+      where.fieldYard = fieldYardConditions;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.booking.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          fieldYard: {
+            include: {
+              footballField: true,
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.booking.count({ where }),
+    ]);
+
+    return { data, total };
   }
 
-  async findByOwnerId(ownerId: string, filter: any): Promise<Booking[]> {
-    const { page = 1, limit = 10, status } = filter;
-    return await this.prisma.booking.findMany({
-      where: {
-        fieldYard: {
-          footballField: {
-            ownerId: ownerId,
+  async findByOwnerId(ownerId: string, filter: any): Promise<{ data: Booking[]; total: number }> {
+    const page = parseInt(filter.page) || 1;
+    const limit = parseInt(filter.limit) || 10;
+
+    const where: any = {
+      deletedAt: null,
+      status: filter.status || undefined,
+      bookingDate: filter.bookingDate ? new Date(filter.bookingDate) : undefined,
+      startTime: filter.startTime ? new Date(`1970-01-01T${filter.startTime}:00Z`) : undefined,
+    };
+
+    const fieldYardConditions: any = {};
+    if (filter.yardType) {
+      fieldYardConditions.type = filter.yardType;
+    }
+
+    const fieldConditions: any = {
+      ownerId: ownerId,
+    };
+    if (filter.footballFieldId) {
+      fieldConditions.id = filter.footballFieldId;
+    }
+    if (filter.category) {
+      fieldConditions.OR = [
+        { categoryId: filter.category },
+        { category: { slug: filter.category } }
+      ];
+    }
+
+    fieldYardConditions.footballField = fieldConditions;
+    where.fieldYard = fieldYardConditions;
+
+    const [data, total] = await Promise.all([
+      this.prisma.booking.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          fieldYard: {
+            include: {
+              footballField: true,
+            },
           },
+          user: true,
         },
-        status: status || undefined,
-        deletedAt: null,
-      },
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        fieldYard: {
-          include: {
-            footballField: true,
-          },
-        },
-        user: true,
-      },
-    });
+      }),
+      this.prisma.booking.count({ where }),
+    ]);
+
+    return { data, total };
   }
 
   async checkAvailability(

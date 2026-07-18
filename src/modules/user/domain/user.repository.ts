@@ -22,9 +22,9 @@ export interface IUserRepository {
   createOwner(data: AddOwnerDto): Promise<User>;
   updateRole(data: UpdateRoleDto, user_id: string): Promise<User>;
   updateStatus(data: UpdateUserStatusDto, user_id: string): Promise<User>;
-  getAllUsers(limit: number, page: number): Promise<User[]>;
-  getAllOwners(limit: number, page: number): Promise<User[]>;
-  getAllAccounts(limit: number, page: number): Promise<User[]>;
+  getAllUsers(limit: number, page: number, filter?: any): Promise<{ data: User[]; total: number }>;
+  getAllOwners(limit: number, page: number, filter?: any): Promise<{ data: User[]; total: number }>;
+  getAllAccounts(limit: number, page: number, filter?: any): Promise<{ data: User[]; total: number }>;
   getAccountStatistics(): Promise<{ totalAccounts: number; totalUsers: number; totalOwners: number }>;
   getOwnerRegisterPending(limit: number, page: number): Promise<OwnerRegistration[]>;
 

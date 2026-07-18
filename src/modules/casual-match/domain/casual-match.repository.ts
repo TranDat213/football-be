@@ -7,6 +7,14 @@ export interface BrowseFilter {
   bookingDate?: string;  // YYYY-MM-DD
   skillLevel?: string;
   keyword?: string;
+  category?: string;
+  yardType?: string;
+  startTime?: string;
+  maxSlotPrice?: number;
+  minSlotsAvailable?: number;
+  status?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;
 }
