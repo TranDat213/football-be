@@ -19,6 +19,7 @@ import { PrismaPaymentRepository } from '../modules/payment/infrastructure/repos
 import { PrismaBookingRepository as PaymentBookingRepository } from '../modules/payment/infrastructure/repositories/prisma-booking.repository';
 import { PrismaCommissionRepository } from '../modules/payment/infrastructure/repositories/prisma-commission.repository';
 import { PrismaTransactionManager } from '../modules/payment/infrastructure/repositories/prisma-transaction.manager';
+import { casualMatchService } from './casual-match.route';
 
 // Dependencies injection
 const bookingRepository = new PrismaBookingRepository(prisma);
@@ -31,9 +32,17 @@ const paymentRepo = new PrismaPaymentRepository(prisma);
 const commissionRepo = new PrismaCommissionRepository(prisma);
 const transactionManager = new PrismaTransactionManager(prisma);
 
-const paymentService = new PaymentService(paymentBookingRepo, paymentRepo, commissionRepo, vnpayService, emailService, transactionManager);
+const paymentService = new PaymentService(
+  paymentBookingRepo,
+  paymentRepo,
+  commissionRepo,
+  vnpayService,
+  emailService,
+  transactionManager,
+  [casualMatchService],
+);
 const refundService = new RefundService(prisma);
-const paymentController = new PaymentController( paymentService);
+const paymentController = new PaymentController(paymentService);
 const refundController = new RefundController(refundService);
 
 // ─── Payment Routes ───────────────────────────────────────────────────────────
@@ -42,19 +51,19 @@ const refundController = new RefundController(refundService);
 paymentRouter.post(
   '/create',
   authenticate,
-  asyncHandler(paymentController.createPayment.bind(paymentController))
+  asyncHandler(paymentController.createPayment.bind(paymentController)),
 );
 
 // GET /payments/vnpay/ipn — VNPay server-to-server callback (public)
 paymentRouter.get(
   '/vnpay/ipn',
-  asyncHandler(paymentController.handleVNPayIPN.bind(paymentController))
+  asyncHandler(paymentController.handleVNPayIPN.bind(paymentController)),
 );
 
 // GET /payments/vnpay/return — browser redirect from VNPay (public, verify only)
 paymentRouter.get(
   '/vnpay/return',
-  asyncHandler(paymentController.handleVNPayReturn.bind(paymentController))
+  asyncHandler(paymentController.handleVNPayReturn.bind(paymentController)),
 );
 
 // GET /payments/admin/all — admin list all payments
@@ -62,14 +71,14 @@ paymentRouter.get(
   '/admin/all',
   authenticate,
   authorize(UserRole.ADMIN),
-  asyncHandler(paymentController.getAllPaymentsAdmin.bind(paymentController))
+  asyncHandler(paymentController.getAllPaymentsAdmin.bind(paymentController)),
 );
 
 // GET /payments/:bookingId — get payment for a booking (authenticated)
 paymentRouter.get(
   '/:bookingId',
   authenticate,
-  asyncHandler(paymentController.getPaymentByBookingId.bind(paymentController))
+  asyncHandler(paymentController.getPaymentByBookingId.bind(paymentController)),
 );
 
 // ─── Refund Routes ────────────────────────────────────────────────────────────
@@ -78,7 +87,7 @@ paymentRouter.get(
 paymentRouter.get(
   '/refunds/:bookingId',
   authenticate,
-  asyncHandler(refundController.getRefundByBookingId.bind(refundController))
+  asyncHandler(refundController.getRefundByBookingId.bind(refundController)),
 );
 
 // PATCH /refunds/:id/confirm — admin confirm refund
@@ -86,7 +95,7 @@ paymentRouter.patch(
   '/refunds/:id/confirm',
   authenticate,
   authorize(UserRole.ADMIN),
-  asyncHandler(refundController.confirmRefund.bind(refundController))
+  asyncHandler(refundController.confirmRefund.bind(refundController)),
 );
 
 export default paymentRouter;

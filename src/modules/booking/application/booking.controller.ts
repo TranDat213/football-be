@@ -117,15 +117,24 @@ export class BookingController {
   }
 
   async createOfflineBooking(req: Request, res: Response, _next: NextFunction) {
-  const ownerId = req.user?.id as string;
-  const fieldYardId = req.params.fieldYardId as string;
-  const data = req.body as CreateOfflineBookingDto;
+    const ownerId = req.user?.id as string;
+    const fieldYardId = req.params.fieldYardId as string;
+    const data = req.body as CreateOfflineBookingDto;
 
-  const booking = await this.bookingService.createOfflineBooking(ownerId, fieldYardId, data);
+    const booking = await this.bookingService.createOfflineBooking(ownerId, fieldYardId, data);
 
-  return res.status(201).json({
-    message: 'Đã khoá khung giờ do khách đặt ngoài',
-    data: booking,
-  });
-}
+    return res.status(201).json({
+      message: 'Đã khoá khung giờ do khách đặt ngoài',
+      data: booking,
+    });
+  }
+
+  async getBookingsForCreateCasual(req: Request, res: Response, _next: NextFunction) {
+    const userId = req.user?.id as string;
+    const bookings = await this.bookingService.getBookingsForCreateCasual(userId);
+    return res.status(200).json({
+      message: 'Danh sách đơn đặt sân đủ điều kiện tạo trận vãng lai',
+      data: bookings,
+    });
+  }
 }

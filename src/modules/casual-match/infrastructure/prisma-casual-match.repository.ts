@@ -9,6 +9,7 @@ import {
   ICasualMatchRepository,
   BrowseFilter,
   OwnerFilter,
+  ParticipationFilter,
 } from '../domain/casual-match.repository';
 
 export class PrismaCasualMatchRepository implements ICasualMatchRepository {
@@ -94,8 +95,13 @@ export class PrismaCasualMatchRepository implements ICasualMatchRepository {
       status: status ? (status as any) : CasualMatchStatus.OPEN,
       visibility: 'PUBLIC',
       deletedAt: null,
+      OR: [
+        { joinDeadline: null },
+        { joinDeadline: { gt: new Date() } }
+      ],
       booking: {
         deletedAt: null,
+        bookingDate: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }, // only today onwards
         fieldYard: {
           footballField: {
             ...(province && { province: { contains: province, mode: 'insensitive' } }),
@@ -119,25 +125,29 @@ export class PrismaCasualMatchRepository implements ICasualMatchRepository {
     };
 
     if (keyword) {
-      where.OR = [
-        { title: { contains: keyword, mode: 'insensitive' } },
-        { description: { contains: keyword, mode: 'insensitive' } },
+      where.AND = [
         {
-          booking: {
-            fieldYard: {
-              footballField: {
-                OR: [
-                  { name: { contains: keyword, mode: 'insensitive' } },
-                  { address: { contains: keyword, mode: 'insensitive' } },
-                ]
+          OR: [
+            { title: { contains: keyword, mode: 'insensitive' } },
+            { description: { contains: keyword, mode: 'insensitive' } },
+            {
+              booking: {
+                fieldYard: {
+                  footballField: {
+                    OR: [
+                      { name: { contains: keyword, mode: 'insensitive' } },
+                      { address: { contains: keyword, mode: 'insensitive' } },
+                    ]
+                  }
+                }
               }
             }
-          }
+          ]
         }
       ];
     }
 
-    let orderBy: Prisma.CasualMatchOrderByWithRelationInput = { booking: { bookingDate: 'asc' } };
+    let orderBy: Prisma.CasualMatchOrderByWithRelationInput = { createdAt: 'desc' };
     if (sortBy === 'price') {
       orderBy = { slotPrice: sortOrder || 'asc' };
     } else if (sortBy === 'newest') {
@@ -360,6 +370,64 @@ export class PrismaCasualMatchRepository implements ICasualMatchRepository {
       data: {
         occupiedSlots: { decrement: count },
         availableSlots: { increment: count },
+      },
+    });
+  }
+
+  async findByParticipantUserId(
+    userId: string,
+    filter: ParticipationFilter,
+  ): Promise<{ data: any[]; total: number }> {
+    const { joinStatus, paymentStatus, date, page = 1, limit = 10 } = filter;
+
+    const where: Prisma.CasualMatchParticipantWhereInput = {
+      userId,
+      deletedAt: null,
+      ...(joinStatus && { joinStatus }),
+      ...(paymentStatus && { paymentStatus }),
+      ...(date && { casualMatch: { booking: { bookingDate: new Date(date) } } }),
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.casualMatchParticipant.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          casualMatch: {
+            include: {
+              booking: {
+                include: {
+                  fieldYard: { include: { footballField: true } },
+                },
+              },
+              host: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.casualMatchParticipant.count({ where }),
+    ]);
+
+    return { data, total };
+  }
+
+  async findParticipantsByMatchId(matchId: string): Promise<any[]> {
+    return this.prisma.casualMatchParticipant.findMany({
+      where: { casualMatchId: matchId, deletedAt: null },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            avatarUrl: true,
+          },
+        },
       },
     });
   }

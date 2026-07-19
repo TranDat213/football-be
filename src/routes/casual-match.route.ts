@@ -22,26 +22,9 @@ const casualMatchRouter = Router();
 // ─── DI ───────────────────────────────────────────────────────────────────────
 const repo = new PrismaCasualMatchRepository(prisma);
 const vnpayService = new VNPayService();
-const service = new CasualMatchService(repo, prisma, vnpayService);
-const ctrl = new CasualMatchController(service);
+const casualMatchService = new CasualMatchService(repo, prisma, vnpayService);
+const ctrl = new CasualMatchController(casualMatchService);
 
-// ─── Public IPN (must be BEFORE authenticate to stay public) ─────────────────
-/**
- * POST /casual-matches/payment/ipn
- * VNPay server-to-server callback — public.
- * NOTE: Registered before /:id routes to avoid Express matching "payment" as :id.
- */
-casualMatchRouter.post(
-  '/payment/ipn',
-  asyncHandler(ctrl.handleIPN.bind(ctrl)),
-);
-
-// ─── Authenticated routes ─────────────────────────────────────────────────────
-
-/**
- * POST /casual-matches
- * Create a casual match from an existing confirmed booking.
- */
 casualMatchRouter.post(
   '/',
   authenticate,
@@ -79,6 +62,17 @@ casualMatchRouter.get(
 );
 
 /**
+ * GET /casual-matches/participations
+ * User's participation history (authenticated).
+ * Must be defined before /:id to avoid conflict.
+ */
+casualMatchRouter.get(
+  '/participations',
+  authenticate,
+  asyncHandler(ctrl.getParticipations.bind(ctrl)),
+);
+
+/**
  * GET /casual-matches/:id
  * Detail view — public.
  */
@@ -86,6 +80,16 @@ casualMatchRouter.get(
   '/:id',
   authenticate,
   asyncHandler(ctrl.getById.bind(ctrl)),
+);
+
+/**
+ * GET /casual-matches/:id/participants
+ * Participant list — host or field owner only.
+ */
+casualMatchRouter.get(
+  '/:id/participants',
+  authenticate,
+  asyncHandler(ctrl.getParticipants.bind(ctrl)),
 );
 
 /**
@@ -154,4 +158,5 @@ casualMatchRouter.patch(
   asyncHandler(ctrl.updateStatus.bind(ctrl)),
 );
 
+export { casualMatchService };
 export default casualMatchRouter;
