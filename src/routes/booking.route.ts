@@ -48,6 +48,12 @@ bookingRouter.get(
 );
 
 bookingRouter.get(
+  '/for-create-casual',
+  authenticate,
+  asyncHandler(bookingController.getBookingsForCreateCasual.bind(bookingController)),
+);
+
+bookingRouter.get(
   '/:id',
   authenticate,
   asyncHandler(bookingController.getBookingById.bind(bookingController)),

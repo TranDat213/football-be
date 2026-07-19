@@ -37,10 +37,11 @@ export class CreateCasualMatchDto {
   @Type(() => Number)
   totalSlots!: number;
 
+  @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive()
   @Type(() => Number)
-  slotPrice!: number;
+  slotPrice?: number;
 
   @IsOptional()
   @IsEnum(SkillLevel)

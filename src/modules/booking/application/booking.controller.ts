@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { BookingService } from './booking.service';
 import { CreateBookingDto, CreateOfflineBookingDto } from '../dto/booking.dto';
+import { toPaginatedResult } from '@/utils/pagination';
 
 export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
@@ -21,17 +22,22 @@ export class BookingController {
     const userId = req.user?.id as string;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const status = req.query.status as string;
+    const { status, bookingDate, startTime, category, yardType, footballFieldId } = req.query;
 
-    const bookings = await this.bookingService.getMyBookings(userId, {
+    const result = await this.bookingService.getMyBookings(userId, {
       page,
       limit,
       status,
+      bookingDate,
+      startTime,
+      category,
+      yardType,
+      footballFieldId,
     });
 
     return res.status(200).json({
       message: 'Danh sách đơn đặt sân của bạn',
-      data: bookings,
+      ...toPaginatedResult(result.data, result.total, page, limit),
     });
   }
 
@@ -49,17 +55,22 @@ export class BookingController {
     const ownerId = req.user?.id as string;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const status = req.query.status as string;
+    const { status, bookingDate, startTime, category, yardType, footballFieldId } = req.query;
 
-    const bookings = await this.bookingService.getOwnerBookings(ownerId, {
+    const result = await this.bookingService.getOwnerBookings(ownerId, {
       page,
       limit,
       status,
+      bookingDate,
+      startTime,
+      category,
+      yardType,
+      footballFieldId,
     });
 
     return res.status(200).json({
       message: 'Danh sách đơn đặt sân dành cho chủ sân',
-      data: bookings,
+      ...toPaginatedResult(result.data, result.total, page, limit),
     });
   }
 
@@ -106,15 +117,24 @@ export class BookingController {
   }
 
   async createOfflineBooking(req: Request, res: Response, _next: NextFunction) {
-  const ownerId = req.user?.id as string;
-  const fieldYardId = req.params.fieldYardId as string;
-  const data = req.body as CreateOfflineBookingDto;
+    const ownerId = req.user?.id as string;
+    const fieldYardId = req.params.fieldYardId as string;
+    const data = req.body as CreateOfflineBookingDto;
 
-  const booking = await this.bookingService.createOfflineBooking(ownerId, fieldYardId, data);
+    const booking = await this.bookingService.createOfflineBooking(ownerId, fieldYardId, data);
 
-  return res.status(201).json({
-    message: 'Đã khoá khung giờ do khách đặt ngoài',
-    data: booking,
-  });
-}
+    return res.status(201).json({
+      message: 'Đã khoá khung giờ do khách đặt ngoài',
+      data: booking,
+    });
+  }
+
+  async getBookingsForCreateCasual(req: Request, res: Response, _next: NextFunction) {
+    const userId = req.user?.id as string;
+    const bookings = await this.bookingService.getBookingsForCreateCasual(userId);
+    return res.status(200).json({
+      message: 'Danh sách đơn đặt sân đủ điều kiện tạo trận vãng lai',
+      data: bookings,
+    });
+  }
 }

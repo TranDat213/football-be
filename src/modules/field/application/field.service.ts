@@ -4,7 +4,12 @@ import {
   FootballField,
   UserRole,
 } from '@prisma/client';
-import { IFieldRepository } from '../domain/field.repository';
+import {
+  IFieldRepository,
+  FieldActiveFilter,
+  FieldPendingFilter,
+  FieldOwnerFilter,
+} from '../domain/field.repository';
 import { UpdateFieldDto, UpdateFieldImageDto } from '../dto/field.dto';
 import { appendSlugSuffix, normalizeSlug } from '@/utils/slug';
 import { Env } from '@/config/env.config';
@@ -93,10 +98,9 @@ export class FieldService {
   }
 
   async findByOwnerId(
-    page: number,
-    limit: number,
     ownerId: string,
-  ): Promise<FootballField[]> {
+    filter: FieldOwnerFilter,
+  ): Promise<{ data: FootballField[]; total: number }> {
     const user = await this.fieldRepository.findOwner(ownerId);
     if (!user) {
       throw new BadRequestException('User not found');
@@ -104,14 +108,13 @@ export class FieldService {
     if (user.role !== UserRole.OWNER) {
       throw new BadRequestException('User is not owner');
     }
-    return await this.fieldRepository.findByOwnerId(page, limit, ownerId);
+    return await this.fieldRepository.findByOwnerId(ownerId, filter);
   }
 
   async findFieldPendingStatus(
-    page: number,
-    limit: number,
-  ): Promise<FootballField[]> {
-    return await this.fieldRepository.findFieldPendingStatus(page, limit);
+    filter: FieldPendingFilter,
+  ): Promise<{ data: FootballField[]; total: number }> {
+    return await this.fieldRepository.findFieldPendingStatus(filter);
   }
 
   async getFieldStatics(): Promise<any> {
@@ -225,9 +228,8 @@ export class FieldService {
 }
 
   async findFieldActiveStatus(
-    page: number,
-    limit: number,
-  ): Promise<FootballField[]> {
-    return await this.fieldRepository.findFieldActiveStatus(page, limit);
+    filter: FieldActiveFilter,
+  ): Promise<{ data: FootballField[]; total: number }> {
+    return await this.fieldRepository.findFieldActiveStatus(filter);
   }
 }

@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { FieldService } from './field.service';
+import { toPaginatedResult } from '@/utils/pagination';
 import {
   UpdateFieldDto,
   UpdateFieldImageDto,
@@ -45,10 +46,24 @@ export class FieldController {
     const ownerId = req.user?.id as string;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const fields = await this.fieldService.findByOwnerId(page, limit, ownerId);
+    const { keyword, district, status, sortBy, sortOrder } = req.query;
+
+    const result = await this.fieldService.findByOwnerId(ownerId, {
+      page,
+      limit,
+      keyword: keyword as string,
+      district: district as string,
+      status: status as string,
+      sortBy: sortBy as string,
+      sortOrder: sortOrder as 'asc' | 'desc',
+    });
+
     return res
       .status(200)
-      .json({ message: 'Fields found successfully', data: fields });
+      .json({
+        message: 'Fields found successfully',
+        ...toPaginatedResult(result.data, result.total, page, limit)
+      });
   }
 
   async findFieldPendingStatus(
@@ -58,10 +73,24 @@ export class FieldController {
   ) {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const fields = await this.fieldService.findFieldPendingStatus(page, limit);
+    const { keyword, province, district, sortBy, sortOrder } = req.query;
+
+    const result = await this.fieldService.findFieldPendingStatus({
+      page,
+      limit,
+      keyword: keyword as string,
+      province: province as string,
+      district: district as string,
+      sortBy: sortBy as string,
+      sortOrder: sortOrder as 'asc' | 'desc',
+    });
+
     return res
       .status(200)
-      .json({ message: 'Fields found successfully', data: fields });
+      .json({
+        message: 'Fields found successfully',
+        ...toPaginatedResult(result.data, result.total, page, limit)
+      });
   }
 
   async getFieldStatics(req: Request, res: Response, _next: NextFunction) {
@@ -127,10 +156,40 @@ export class FieldController {
   ) {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const fields = await this.fieldService.findFieldActiveStatus(page, limit);
+    const {
+      keyword,
+      category,
+      yardType,
+      province,
+      district,
+      ward,
+      minPrice,
+      maxPrice,
+      sortBy,
+      sortOrder,
+    } = req.query;
+
+    const result = await this.fieldService.findFieldActiveStatus({
+      page,
+      limit,
+      keyword: keyword as string,
+      category: category as string,
+      yardType: yardType as string,
+      province: province as string,
+      district: district as string,
+      ward: ward as string,
+      minPrice: minPrice ? Number(minPrice) : undefined,
+      maxPrice: maxPrice ? Number(maxPrice) : undefined,
+      sortBy: sortBy as string,
+      sortOrder: sortOrder as 'asc' | 'desc',
+    });
+
     return res
       .status(200)
-      .json({ message: 'Fields found successfully', data: fields });
+      .json({
+        message: 'Fields found successfully',
+        ...toPaginatedResult(result.data, result.total, page, limit)
+      });
   }
 
   // ── Aggregate endpoint ─────────────────────────────────────────────

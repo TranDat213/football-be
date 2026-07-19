@@ -1,6 +1,7 @@
 import {
   OwnerRegistration,
   OwnerRegistrationStatus,
+  Prisma,
   PrismaClient,
   User,
   UserRole,
@@ -114,45 +115,109 @@ export class PrismaUserRepository implements IUserRepository {
     });
   }
 
-  async getAllUsers(limit: number, page: number): Promise<User[]> {
-    return await this.prisma.user.findMany({
-      where: {
-        role: UserRole.USER,
-        deletedAt: null,
-      },
-      take: limit,
-      skip: (page - 1) * limit,
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+  async getAllUsers(limit: number, page: number, filter?: any): Promise<{ data: User[]; total: number }> {
+    const where: any = {
+      role: UserRole.USER,
+      deletedAt: null,
+    };
+
+    if (filter?.keyword) {
+      where.OR = [
+        { firstName: { contains: filter.keyword, mode: 'insensitive' } },
+        { lastName: { contains: filter.keyword, mode: 'insensitive' } },
+        { email: { contains: filter.keyword, mode: 'insensitive' } },
+        { phone: { contains: filter.keyword, mode: 'insensitive' } },
+      ];
+    }
+
+    let orderBy: Prisma.UserOrderByWithRelationInput = { createdAt: 'desc' };
+    if (filter?.sortBy === 'name') {
+      orderBy = { firstName: filter.sortOrder || 'asc' };
+    } else if (filter?.sortBy === 'createdAt') {
+      orderBy = { createdAt: filter.sortOrder || 'desc' };
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        take: limit,
+        skip: (page - 1) * limit,
+        orderBy,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return { data, total };
   }
 
-  async getAllOwners(limit: number, page: number): Promise<User[]> {
-    return await this.prisma.user.findMany({
-      where: {
-        role: UserRole.OWNER,
-        deletedAt: null,
-      },
-      take: limit,
-      skip: (page - 1) * limit,
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+  async getAllOwners(limit: number, page: number, filter?: any): Promise<{ data: User[]; total: number }> {
+    const where: any = {
+      role: UserRole.OWNER,
+      deletedAt: null,
+      status: filter?.status ? filter.status : undefined,
+    };
+
+    if (filter?.keyword) {
+      where.OR = [
+        { firstName: { contains: filter.keyword, mode: 'insensitive' } },
+        { lastName: { contains: filter.keyword, mode: 'insensitive' } },
+        { email: { contains: filter.keyword, mode: 'insensitive' } },
+        { phone: { contains: filter.keyword, mode: 'insensitive' } },
+      ];
+    }
+
+    let orderBy: Prisma.UserOrderByWithRelationInput = { createdAt: 'desc' };
+    if (filter?.sortBy === 'name') {
+      orderBy = { firstName: filter.sortOrder || 'asc' };
+    } else if (filter?.sortBy === 'createdAt') {
+      orderBy = { createdAt: filter.sortOrder || 'desc' };
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        take: limit,
+        skip: (page - 1) * limit,
+        orderBy,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return { data, total };
   }
 
-  async getAllAccounts(limit: number, page: number): Promise<User[]> {
-    return await this.prisma.user.findMany({
-      where: {
-        deletedAt: null,
-      },
-      take: limit,
-      skip: (page - 1) * limit,
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+  async getAllAccounts(limit: number, page: number, filter?: any): Promise<{ data: User[]; total: number }> {
+    const where: any = {
+      deletedAt: null,
+    };
+
+    if (filter?.keyword) {
+      where.OR = [
+        { firstName: { contains: filter.keyword, mode: 'insensitive' } },
+        { lastName: { contains: filter.keyword, mode: 'insensitive' } },
+        { email: { contains: filter.keyword, mode: 'insensitive' } },
+        { phone: { contains: filter.keyword, mode: 'insensitive' } },
+      ];
+    }
+
+    let orderBy: Prisma.UserOrderByWithRelationInput = { createdAt: 'desc' };
+    if (filter?.sortBy === 'name') {
+      orderBy = { firstName: filter.sortOrder || 'asc' };
+    } else if (filter?.sortBy === 'createdAt') {
+      orderBy = { createdAt: filter.sortOrder || 'desc' };
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        take: limit,
+        skip: (page - 1) * limit,
+        orderBy,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return { data, total };
   }
 
   async getAccountStatistics() {

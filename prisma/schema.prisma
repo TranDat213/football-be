@@ -569,13 +569,16 @@ model CasualMatchParticipant {
   paymentStatus ParticipantPayStatus @default(UNPAID) @map("payment_status")
   joinStatus    JoinStatus           @default(PENDING) @map("join_status")
   selectedTeam  TeamSide?            @map("selected_team")
-  joinedAt      DateTime?            @map("joined_at")       // set when APPROVED
-  cancelledAt   DateTime?            @map("cancelled_at")    // future: cancellation tracking
-  reservedUntil DateTime?            @map("reserved_until")  // future: reservation timeout / waitlist expiry
-  checkedInAt   DateTime?            @map("checked_in_at")   // future: check-in
-  createdAt     DateTime             @default(now()) @map("created_at")
-  updatedAt     DateTime             @updatedAt @map("updated_at")
-  deletedAt     DateTime?            @map("deleted_at")
+  joinedAt         DateTime?            @map("joined_at")          // set when APPROVED
+  cancelledAt      DateTime?            @map("cancelled_at")       // future: cancellation tracking
+  reservedUntil    DateTime?            @map("reserved_until")     // future: reservation timeout / waitlist expiry
+  checkedInAt      DateTime?            @map("checked_in_at")      // future: check-in
+  transactionCode  String?              @unique @map("transaction_code") @db.VarChar(100) // VNPay transaction no
+  gatewayResponse  Json?                @map("gateway_response") @db.JsonB              // full VNPay IPN params
+  paidAt           DateTime?            @map("paid_at")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  deletedAt        DateTime?            @map("deleted_at")
 
   casualMatch CasualMatch @relation(fields: [casualMatchId], references: [id])
   user        User        @relation(fields: [userId], references: [id])

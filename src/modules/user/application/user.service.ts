@@ -246,25 +246,25 @@ export class UserService {
   }
 
 //get all users
-  async getAllUsers(limit: number, page: number): Promise<User[]> {
+  async getAllUsers(limit: number, page: number, filter?: any): Promise<{ data: User[]; total: number }> {
     try {
-      return await this.userRepository.getAllUsers(limit, page);
+      return await this.userRepository.getAllUsers(limit, page, filter);
     } catch (error) {
       throw new InternalServerException('Failed to get all users');
     }
   }
 
-  async getAllOwners(limit: number, page: number): Promise<User[]> {
+  async getAllOwners(limit: number, page: number, filter?: any): Promise<{ data: User[]; total: number }> {
     try {
-      return await this.userRepository.getAllOwners(limit, page);
+      return await this.userRepository.getAllOwners(limit, page, filter);
     } catch (error) {
       throw new InternalServerException('Failed to get all owners');
     }
   }
 
-  async getAllAccounts(limit: number, page: number): Promise<User[]> {
+  async getAllAccounts(limit: number, page: number, filter?: any): Promise<{ data: User[]; total: number }> {
     try {
-      return await this.userRepository.getAllAccounts(limit, page);
+      return await this.userRepository.getAllAccounts(limit, page, filter);
     } catch (error) {
       throw new InternalServerException('Failed to get all accounts');
     }

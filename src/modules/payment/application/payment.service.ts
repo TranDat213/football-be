@@ -7,6 +7,7 @@ import { BookingRepository } from '../domain/repositories/booking.repository';
 import { PaymentRepository } from '../domain/repositories/payment.repository';
 import { CommissionRepository } from '../domain/repositories/commission.repository';
 import { TransactionManager } from '../domain/repositories/transaction.manager';
+import { IExternalIPNHandler } from '../domain/ipn-handler.interface';
 
 export interface CreatePaymentResult {
   paymentUrl?: string;
@@ -19,7 +20,8 @@ export class PaymentService {
     private readonly commissionRepository: CommissionRepository,
     private readonly vnpayService: VNPayService,
     private readonly emailService: EmailService,
-    private readonly transactionManager: TransactionManager
+    private readonly transactionManager: TransactionManager,
+    private readonly externalHandlers: IExternalIPNHandler[] = [],
   ) {}
 
   async createPayment(
@@ -140,8 +142,15 @@ export class PaymentService {
       if (!isValid) {
         return { RspCode: '97', Message: 'Invalid Checksum' };
       }
+      const txnRef = query['vnp_TxnRef'] as string;
 
-      const bookingId = query['vnp_TxnRef'] as string;
+      for (const handler of this.externalHandlers) {
+        if (handler.matches(txnRef)) {
+          return handler.handle(query);
+        }
+      }
+
+      const bookingId = txnRef;
       const amount = Number(query['vnp_Amount']) / 100;
       
       const booking = await this.bookingRepository.findByIdWithLock(bookingId);
@@ -173,9 +182,9 @@ export class PaymentService {
     bookingId: string;
     amount: number;
     message: string;
-  }> {
+  } | any> {
     const isValid = this.vnpayService.verifyChecksum(query);
-    const bookingId = query['vnp_TxnRef'] as string;
+    const txnRef = query['vnp_TxnRef'] as string;
     const amount = Number(query['vnp_Amount']) / 100;
     const responseCode = query['vnp_ResponseCode'] as string;
 
@@ -183,12 +192,21 @@ export class PaymentService {
       return {
         success: false,
         responseCode: '97',
-        bookingId,
+        bookingId: txnRef,
         amount,
         message: 'Xác minh chữ ký thất bại',
       };
     }
 
+    // Dispatch to external handler if it handles this txnRef (e.g. CMATCH_ prefix)
+    for (const handler of this.externalHandlers) {
+      if (handler.matchesReturn && handler.matchesReturn(txnRef) && handler.handleReturn) {
+        return handler.handleReturn(query);
+      }
+    }
+
+    // Booking flow
+    const bookingId = txnRef;
     if (responseCode === '00') {
       return {
         success: true,

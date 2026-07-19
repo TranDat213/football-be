@@ -1,4 +1,4 @@
-import { CasualMatch, CasualMatchParticipant, CasualMatchStatus, Prisma } from '@prisma/client';
+import { CasualMatch, CasualMatchParticipant, CasualMatchStatus, JoinStatus, ParticipantPayStatus, Prisma } from '@prisma/client';
 
 export interface BrowseFilter {
   province?: string;
@@ -7,6 +7,14 @@ export interface BrowseFilter {
   bookingDate?: string;  // YYYY-MM-DD
   skillLevel?: string;
   keyword?: string;
+  category?: string;
+  yardType?: string;
+  startTime?: string;
+  maxSlotPrice?: number;
+  minSlotsAvailable?: number;
+  status?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;
 }
@@ -14,6 +22,14 @@ export interface BrowseFilter {
 export interface OwnerFilter {
   status?: CasualMatchStatus;
   date?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface ParticipationFilter {
+  joinStatus?: JoinStatus;
+  paymentStatus?: ParticipantPayStatus;
+  date?: string;   // YYYY-MM-DD filter on booking date
   page?: number;
   limit?: number;
 }
@@ -39,4 +55,8 @@ export interface ICasualMatchRepository {
   // Slot update (atomic — used inside transaction)
   incrementOccupied(id: string, count: number, tx: any): Promise<CasualMatch>;
   decrementOccupied(id: string, count: number, tx: any): Promise<CasualMatch>;
+
+  // Participation history
+  findByParticipantUserId(userId: string, filter: ParticipationFilter): Promise<{ data: any[]; total: number }>;
+  findParticipantsByMatchId(matchId: string): Promise<any[]>;
 }

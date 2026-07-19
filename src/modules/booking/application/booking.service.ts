@@ -172,4 +172,38 @@ async createOfflineBooking(ownerId: string, fieldYardId: string, data: CreateOff
   async countBookingByDate(date: Date) {
     return await this.bookingRepository.countBookingByDate(date);
   }
+
+  async getBookingsForCreateCasual(userId: string) {
+    const now = new Date();
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        userId,
+        status: BookingStatus.CONFIRMED,
+        paymentStatus: PaymentStatus.PAID,
+        casualMatch: null,
+        bookingDate: {
+          gte: new Date(new Date().setHours(0, 0, 0, 0)),
+        },
+      },
+      include: {
+        fieldYard: {
+          include: {
+            footballField: true,
+          },
+        },
+      },
+      orderBy: {
+        bookingDate: 'asc',
+      },
+    });
+
+    const filtered = bookings.filter((b) => {
+      const matchStart = new Date(b.bookingDate);
+      const time = new Date(b.startTime);
+      matchStart.setHours(time.getHours(), time.getMinutes(), 0, 0);
+      return matchStart > now;
+    });
+
+    return filtered;
+  }
 }

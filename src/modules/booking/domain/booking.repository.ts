@@ -24,8 +24,8 @@ export interface CreateBookingLockData {
 export interface IBookingRepository {
   // create(data: any): Promise<Booking>;
   findById(id: string): Promise<Booking | null>;
-  findByUserId(userId: string, filter: any): Promise<Booking[]>;
-  findByOwnerId(ownerId: string, filter: any): Promise<Booking[]>;
+  findByUserId(userId: string, filter: any): Promise<{ data: Booking[]; total: number }>;
+  findByOwnerId(ownerId: string, filter: any): Promise<{ data: Booking[]; total: number }>;
   checkAvailability(
     yardId: string,
     date: string,
