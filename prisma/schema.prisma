@@ -47,6 +47,7 @@ enum BookingStatus {
   AWAITING_PAYMENT
   CONFIRMED
   CANCELLED
+  OWNER_CANCELLED
 }
 
 enum PaymentStatus {
@@ -140,14 +141,17 @@ enum YardType {
 }
 
 enum NotificationType {
-  BOOKING_CONFIRMED
+  OWNER_REGISTER_APPROVED
+  FIELD_APPROVED
+  FIELD_CREATED_APPROVED
+  BOOKING_CREATED
   BOOKING_CANCELLED
-  PAYMENT_SUCCESS
-  MATCH_JOINED
-  MATCH_APPROVED
-  REVIEW_REPLY
-  NEW_MATCH_POST
-  SYSTEM
+  CASUAL_MATCH_JOINED
+  CASUAL_MATCH_LEAVED
+  FIELD_WAITING_APPROVAL
+  FIELD_UPDATE_WAITING
+  OWNER_REGISTER_WAITING
+  OWNER_CANCEL_BOOKING
 }
 
 enum OwnerRegistrationStatus {
@@ -383,12 +387,15 @@ model Booking {
   paymentStatus   PaymentStatus @default(UNPAID) @map("payment_status")
   source          BookingSource @default(ONLINE) @map("source")
   note            String?       @db.Text
-  expiresAt       DateTime?     @map("expires_at")
-  cancelledAt     DateTime?     @map("cancelled_at")
-  cancelledReason String?       @map("cancelled_reason") @db.Text
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
-  deletedAt       DateTime?     @map("deleted_at")
+  expiresAt          DateTime?     @map("expires_at")
+  cancelledAt        DateTime?     @map("cancelled_at")
+  cancelledReason    String?       @map("cancelled_reason") @db.Text
+  ownerCancelReason  String?       @map("owner_cancel_reason") @db.Text
+  ownerCancelledAt   DateTime?     @map("owner_cancelled_at")
+  ownerCancelledBy   String?       @map("owner_cancelled_by") @db.VarChar(255)
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+  deletedAt          DateTime?     @map("deleted_at")
 
   user        User        @relation(fields: [userId], references: [id])
   fieldYard   FieldYard   @relation(fields: [fieldYardId], references: [id])
@@ -607,6 +614,7 @@ model Notification {
   type        NotificationType
   title       String           @db.VarChar(255)
   content     String?          @db.Text
+  metadata    Json?            @db.JsonB
   isRead      Boolean          @default(false) @map("is_read")
   readAt      DateTime?        @map("read_at")
   createdAt   DateTime         @default(now()) @map("created_at")

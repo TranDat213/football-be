@@ -431,4 +431,96 @@ export class PrismaCasualMatchRepository implements ICasualMatchRepository {
       },
     });
   }
+
+  async findBookingForCasualCreate(bookingId: string): Promise<any | null> {
+    return this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { fieldYard: true },
+    });
+  }
+
+  async findActiveMatchesForSync(): Promise<any[]> {
+    return this.prisma.casualMatch.findMany({
+      where: {
+        status: { in: ['OPEN', 'FULL', 'STARTED'] as any },
+        deletedAt: null,
+      },
+      include: { booking: true },
+    });
+  }
+
+  async findWithBooking(id: string): Promise<any | null> {
+    return this.prisma.casualMatch.findUnique({
+      where: { id, deletedAt: null },
+      include: { booking: true },
+    });
+  }
+
+  async cancelParticipationWithTransaction(params: {
+    casualMatchId: string;
+    userId: string;
+    participantId: string;
+    isPaid: boolean;
+    slotCount: number;
+    isFull: boolean;
+    hostId: string;
+    totalAmount: number;
+  }): Promise<any> {
+    const { casualMatchId, userId, participantId, isPaid, slotCount, isFull, hostId, totalAmount } = params;
+
+    return this.prisma.$transaction(async (tx) => {
+      let finalPayStatus: any = 'UNPAID';
+
+      if (isPaid) {
+        finalPayStatus = 'REFUNDED';
+
+        // Notify host
+        await tx.notification.create({
+          data: {
+            recipientId: hostId,
+            actorId: userId,
+            entityType: 'CasualMatch',
+            entityId: casualMatchId,
+            type: 'CASUAL_MATCH_JOINED',
+            title: 'Người chơi đã hủy slot',
+            content: 'Có một người chơi vừa hủy slot tham gia và đã được hoàn tiền.',
+          },
+        });
+
+        // Notify participant
+        await tx.notification.create({
+          data: {
+            recipientId: userId,
+            actorId: userId,
+            entityType: 'CasualMatch',
+            entityId: casualMatchId,
+            type: 'CASUAL_MATCH_LEAVED',
+            title: 'Hủy tham gia trận và hoàn tiền',
+            content: `Bạn đã hủy tham gia trận vãng lai thành công. Số tiền ${Number(totalAmount).toLocaleString('vi-VN')}đ đã được hoàn lại qua VNPay.`,
+          },
+        });
+      }
+
+      const updatedParticipant = await tx.casualMatchParticipant.update({
+        where: { id: participantId },
+        data: {
+          joinStatus: 'CANCELLED',
+          paymentStatus: finalPayStatus,
+          cancelledAt: new Date(),
+        },
+      });
+
+      await tx.casualMatch.update({
+        where: { id: casualMatchId },
+        data: {
+          occupiedSlots: { decrement: slotCount },
+          availableSlots: { increment: slotCount },
+          status: isFull ? 'OPEN' : undefined,
+        },
+      });
+
+      return updatedParticipant;
+    });
+  }
 }
+

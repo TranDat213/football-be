@@ -13,7 +13,7 @@ import { authorize } from '@/middleware/authorize.middlerware';
 
 const userRouter = Router();
 const userRepository = new PrismaUserRepository(prisma);
-const userService = new UserService(userRepository);
+const userService = new UserService(userRepository, prisma);
 const userController = new UserController(userService);
 
 userRouter.get(

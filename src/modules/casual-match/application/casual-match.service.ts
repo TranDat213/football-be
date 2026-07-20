@@ -56,13 +56,7 @@ export class CasualMatchService implements IExternalIPNHandler {
   private async _syncExpiredStatuses() {
     try {
       const now = new Date();
-      const matches = await this.prisma.casualMatch.findMany({
-        where: {
-          status: { in: [CasualMatchStatus.OPEN, CasualMatchStatus.FULL, CasualMatchStatus.STARTED] },
-          deletedAt: null,
-        },
-        include: { booking: true },
-      });
+      const matches = await this.repo.findActiveMatchesForSync();
 
       for (const m of matches) {
         const matchStart = getMatchStart(m.booking.bookingDate, m.booking.startTime);
@@ -76,13 +70,10 @@ export class CasualMatchService implements IExternalIPNHandler {
         }
 
         if (newStatus && m.status !== newStatus) {
-          await this.prisma.casualMatch.update({
-            where: { id: m.id },
-            data: {
-              status: newStatus,
-              ...(newStatus === CasualMatchStatus.STARTED && { startedAt: now }),
-              ...(newStatus === CasualMatchStatus.FINISHED && { finishedAt: now }),
-            },
+          await this.repo.update(m.id, {
+            status: newStatus,
+            ...(newStatus === CasualMatchStatus.STARTED && { startedAt: now }),
+            ...(newStatus === CasualMatchStatus.FINISHED && { finishedAt: now }),
           });
         }
       }
@@ -94,10 +85,7 @@ export class CasualMatchService implements IExternalIPNHandler {
   // ─── 1. Create Casual Match ────────────────────────────────────────────────
   async create(userId: string, dto: CreateCasualMatchDto) {
     // Verify booking exists, belongs to user, is CONFIRMED, has no existing match
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: dto.bookingId },
-      include: { fieldYard: true },
-    });
+    const booking = await this.repo.findBookingForCasualCreate(dto.bookingId);
     if (!booking) throw new NotFoundException('Booking không tồn tại');
     if (booking.userId !== userId) throw new ForbiddenException('Bạn không phải chủ booking này');
     if (booking.status !== BookingStatus.CONFIRMED) throw new BadRequestException('Booking phải ở trạng thái CONFIRMED');
@@ -404,9 +392,10 @@ export class CasualMatchService implements IExternalIPNHandler {
               actorId: participant.userId,
               entityType: 'CasualMatch',
               entityId: match.id,
-              type: 'MATCH_JOINED',
-              title: 'Người chơi mới đã tham gia trận của bạn',
+              type: 'CASUAL_MATCH_JOINED' as any,
+              title: 'Có người tham gia trận đấu vãng lai của bạn.',
               content: 'Có người đã thanh toán và tham gia trận vãng lai của bạn',
+              metadata: { casualMatchId: match.id, userId: participant.userId } as any,
             },
           });
         }
@@ -440,47 +429,65 @@ export class CasualMatchService implements IExternalIPNHandler {
     };
   }
 
-  // ─── 11. Participant cancel ────────────────────────────────────────────────
+  // ─── 11. Participant cancel (>1h before deadline) ──────────────────────────
   async cancelParticipation(casualMatchId: string, userId: string, _dto: CancelParticipationDto) {
-    return this.prisma.$transaction(async (tx) => {
-      const participant = await tx.casualMatchParticipant.findUnique({
-        where: { casualMatchId_userId: { casualMatchId, userId } },
+    const match = await this.repo.findWithBooking(casualMatchId);
+    if (!match) throw new NotFoundException('Casual Match không tồn tại');
+
+    const participant = await this.repo.findParticipantByMatchAndUser(casualMatchId, userId);
+    if (!participant || participant.deletedAt) throw new NotFoundException('Bạn chưa đăng ký trận này');
+    if (participant.joinStatus === JoinStatus.CANCELLED) throw new BadRequestException('Đã huỷ trước đó rồi');
+
+    // Deadline cutoff validation: >1h before joinDeadline (or matchStart)
+    const matchStart = getMatchStart(match.booking.bookingDate, match.booking.startTime);
+    const deadline = match.joinDeadline ?? matchStart;
+    const cutoffTime = new Date(deadline.getTime() - 60 * 60 * 1000);
+
+    if (new Date() > cutoffTime) {
+      throw new BadRequestException('Không thể hủy tham gia trước hạn đăng ký/thi đấu dưới 1 giờ.');
+    }
+
+    const isPaid = participant.paymentStatus === ParticipantPayStatus.PAID;
+
+    if (isPaid) {
+      await this.vnpayService.refundPayment({
+        txnRef: `CMATCH_${participant.id}`,
+        amount: Number(participant.totalAmount),
       });
-      if (!participant || participant.deletedAt) throw new NotFoundException('Bạn chưa đăng ký trận này');
-      if (participant.joinStatus === JoinStatus.CANCELLED) throw new BadRequestException('Đã huỷ trước đó rồi');
+    }
 
-      const match = await tx.casualMatch.findUnique({ where: { id: casualMatchId } });
-      if (!match) throw new NotFoundException('Casual Match không tồn tại');
-
-      const isPastDeadline = match.joinDeadline && new Date() > match.joinDeadline;
-      if (isPastDeadline) throw new BadRequestException('Đã quá hạn, không thể huỷ');
-
-      await tx.casualMatchParticipant.update({
-        where: { id: participant.id },
-        data: {
-          joinStatus: JoinStatus.CANCELLED,
-          cancelledAt: new Date(),
-          paymentStatus: participant.paymentStatus === ParticipantPayStatus.PAID ? ParticipantPayStatus.REFUND_PENDING : participant.paymentStatus,
-        },
-      });
-
-      await tx.casualMatch.update({
-        where: { id: casualMatchId },
-        data: {
-          occupiedSlots: { decrement: participant.slotCount },
-          availableSlots: { increment: participant.slotCount },
-          status: match.status === CasualMatchStatus.FULL ? CasualMatchStatus.OPEN : match.status,
-        },
-      });
-
-      return {
-        success: true,
-        refundInitiated: participant.paymentStatus === ParticipantPayStatus.PAID,
-        message: participant.paymentStatus === ParticipantPayStatus.PAID
-          ? 'Huỷ thành công. Hoàn tiền đang được xử lý.'
-          : 'Huỷ thành công.',
-      };
+    const updatedParticipant = await this.repo.cancelParticipationWithTransaction({
+      casualMatchId,
+      userId,
+      participantId: participant.id,
+      isPaid,
+      slotCount: participant.slotCount,
+      isFull: match.status === CasualMatchStatus.FULL,
+      hostId: match.hostId,
+      totalAmount: Number(participant.totalAmount),
     });
+
+    // Notify host that someone left
+    this.prisma.notification.create({
+      data: {
+        recipientId: match.hostId,
+        actorId: userId,
+        entityType: 'CasualMatch',
+        entityId: casualMatchId,
+        type: 'CASUAL_MATCH_LEAVED' as any,
+        title: 'Có người đã hủy tham gia trận đấu vãng lai.',
+        content: 'Có người đã hủy tham gia trận vãng lai của bạn',
+        metadata: { casualMatchId, userId } as any,
+      },
+    }).catch(() => {});
+
+    return {
+      success: true,
+      message: isPaid
+        ? 'Hủy tham gia và hoàn tiền thành công.'
+        : 'Hủy tham gia thành công.',
+      data: updatedParticipant,
+    };
   }
 
   // ─── 12. Update status ───────────────────────────────────────────────────
@@ -512,16 +519,11 @@ export class CasualMatchService implements IExternalIPNHandler {
 
   // ─── 14. Match participant list (host/owner only) ─────────────────────────
   async getMatchParticipants(matchId: string, requesterId: string) {
-    const match = await this.prisma.casualMatch.findUnique({
-      where: { id: matchId, deletedAt: null },
-      include: {
-        booking: { include: { fieldYard: { include: { footballField: true } } } },
-      },
-    });
+    const match = await this.repo.findWithBooking(matchId);
     if (!match) throw new NotFoundException('Casual Match không tồn tại');
 
     const isHost = match.hostId === requesterId;
-    const isOwner = match.booking.fieldYard.footballField.ownerId === requesterId;
+    const isOwner = match.booking?.fieldYard?.footballField?.ownerId === requesterId;
     if (!isHost && !isOwner) throw new ForbiddenException('Chỉ host hoặc chủ sân mới được xem');
 
     const participants = await this.repo.findParticipantsByMatchId(matchId);
@@ -530,10 +532,7 @@ export class CasualMatchService implements IExternalIPNHandler {
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
   private async _getMatchOrFail(id: string) {
-    const match = await this.prisma.casualMatch.findUnique({
-      where: { id, deletedAt: null },
-      include: { booking: true },
-    });
+    const match = await this.repo.findWithBooking(id);
     if (!match) throw new NotFoundException('Casual Match không tồn tại');
     return match;
   }

@@ -9,6 +9,7 @@ import { BadRequestException } from '@/utils/app-error';
 import { YARD_CODE_PREFIX } from '@/constants/yard.constant';
 import { YardType } from '@prisma/client';
 import { deleteImageFromCloudinary } from '@/utils/cloudinary';
+import { notifyAllAdmins } from '@/modules/notification/application/notification.service';
 
 export interface CreateFootballFieldResult {
   field: any;
@@ -141,6 +142,16 @@ export class CreateFootballFieldUseCase {
         },
         { timeout: 15000 },
       );
+
+      // Notify all admins about new field creation awaiting approval
+      notifyAllAdmins(this.prisma, {
+        actorId: ownerId,
+        entityType: 'FootballField',
+        entityId: result.field.id,
+        type: 'FIELD_WAITING_APPROVAL',
+        title: 'Có sân bóng mới cần phê duyệt.',
+        content: `Sân "${result.field.name}" vừa được tạo và đang chờ duyệt.`,
+      }).catch(() => {});
 
       return result;
     } catch (error) {

@@ -125,6 +125,7 @@ export class PrismaUserRepository implements IUserRepository {
       where.OR = [
         { firstName: { contains: filter.keyword, mode: 'insensitive' } },
         { lastName: { contains: filter.keyword, mode: 'insensitive' } },
+        { username: { contains: filter.keyword, mode: 'insensitive' } },
         { email: { contains: filter.keyword, mode: 'insensitive' } },
         { phone: { contains: filter.keyword, mode: 'insensitive' } },
       ];
@@ -161,6 +162,7 @@ export class PrismaUserRepository implements IUserRepository {
       where.OR = [
         { firstName: { contains: filter.keyword, mode: 'insensitive' } },
         { lastName: { contains: filter.keyword, mode: 'insensitive' } },
+        { username: { contains: filter.keyword, mode: 'insensitive' } },
         { email: { contains: filter.keyword, mode: 'insensitive' } },
         { phone: { contains: filter.keyword, mode: 'insensitive' } },
       ];
@@ -195,6 +197,7 @@ export class PrismaUserRepository implements IUserRepository {
       where.OR = [
         { firstName: { contains: filter.keyword, mode: 'insensitive' } },
         { lastName: { contains: filter.keyword, mode: 'insensitive' } },
+        { username: { contains: filter.keyword, mode: 'insensitive' } },
         { email: { contains: filter.keyword, mode: 'insensitive' } },
         { phone: { contains: filter.keyword, mode: 'insensitive' } },
       ];

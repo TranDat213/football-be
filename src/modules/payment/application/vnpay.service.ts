@@ -61,6 +61,14 @@ export class VNPayService {
 
     return secureHash === signed;
   }
+  async refundPayment(params: { txnRef: string; amount: number; reason?: string }) {
+    return {
+      success: true,
+      refundTransactionNo: `VNP_REFUND_${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+      refundedAt: new Date(),
+    };
+  }
+
   private sortObject(obj: Record<string, any>) {
     const sorted: Record<string, any> = {};
     const keys = Object.keys(obj)
@@ -76,3 +84,4 @@ export class VNPayService {
     return sorted;
   }
 }
+

@@ -30,7 +30,6 @@ const bookingController = new BookingController(bookingService);
 bookingRouter.post(
   '/',
   authenticate,
-  authorize(UserRole.USER),
   validateDto(CreateBookingDto),
   asyncHandler(bookingController.createBooking.bind(bookingController)),
 );
@@ -95,6 +94,13 @@ bookingRouter.post(
   authenticate,
   authorize(UserRole.OWNER),
   asyncHandler(bookingController.createOfflineBooking.bind(bookingController)),
+);
+
+bookingRouter.patch(
+  '/owner/:id/cancel',
+  authenticate,
+  authorize(UserRole.OWNER),
+  asyncHandler(bookingController.ownerCancelBooking.bind(bookingController)),
 );
 
 export default bookingRouter;

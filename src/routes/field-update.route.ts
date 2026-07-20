@@ -38,7 +38,7 @@ const updateFieldUseCase = new UpdateFootballFieldUseCase(
   priceRuleRepository,
   fieldService,
 );
-const service = new FootballFieldUpdateRequestService(requestRepo, fieldRepo, categoryRepo, updateFieldUseCase);
+const service = new FootballFieldUpdateRequestService(requestRepo, fieldRepo, categoryRepo, updateFieldUseCase, prisma);
 const controller = new FootballFieldUpdateRequestController(service);
 
 fieldUpdateRouter.post(

@@ -137,4 +137,17 @@ export class BookingController {
       data: bookings,
     });
   }
+
+  async ownerCancelBooking(req: Request, res: Response, _next: NextFunction) {
+    const ownerId = req.user?.id as string;
+    const bookingId = req.params.id as string;
+    const { reason } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ message: 'Lý do hủy không được để trống' });
+    }
+
+    const result = await this.bookingService.ownerCancelBooking(ownerId, bookingId, reason.trim());
+    return res.status(200).json(result);
+  }
 }

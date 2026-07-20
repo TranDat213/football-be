@@ -1,4 +1,4 @@
-import { BookingSource, BookingStatus, PaymentMethod, PaymentStatus, PrismaClient, YardStatus } from '@prisma/client';
+import { BookingSource, BookingStatus, CasualMatchStatus, NotificationType, PaymentMethod, PaymentStatus, PrismaClient, RefundStatus, YardStatus } from '@prisma/client';
 import {
   BadRequestException,
   ForbiddenException,
@@ -8,6 +8,7 @@ import { IBookingRepository } from '../domain/booking.repository';
 import { CreateBookingDto, CreateOfflineBookingDto } from '../dto/booking.dto';
 import { EmailService } from '../infrastructure/email.service';
 import { RefundService } from '../../payment/application/refund.service';
+import { VNPayService } from '../../payment/application/vnpay.service';
 import { format } from 'date-fns';
 import { Env } from '@/config/env.config';
 
@@ -43,7 +44,7 @@ export class BookingService {
 
     const requiresPrepayment = data.paymentMethod !== PaymentMethod.CASH;
 
-    return await this.bookingRepository.createBookingWithLock({
+    const booking = await this.bookingRepository.createBookingWithLock({
       userId,
       fieldYardId: data.fieldYardId,
       bookingDate: data.bookingDate,
@@ -57,6 +58,34 @@ export class BookingService {
       status: requiresPrepayment ? BookingStatus.AWAITING_PAYMENT : BookingStatus.PENDING,
       expiresAt: requiresPrepayment ? new Date(Date.now() + Number(Env.LOCK_TTL_MINUTES)) : null,
     });
+
+    // Notify owner about new booking (fire-and-forget)
+    this.prisma.fieldYard.findUnique({
+      where: { id: data.fieldYardId },
+      include: { footballField: true },
+    }).then((yard) => {
+      if (!yard?.footballField?.ownerId) return;
+      const startH = data.startTime.slice(0, 5);
+      const endH = data.endTime.slice(0, 5);
+      return this.prisma.notification.create({
+        data: {
+          recipientId: yard.footballField.ownerId,
+          actorId: userId,
+          entityType: 'Booking',
+          entityId: booking.id,
+          type: 'BOOKING_CREATED' as any,
+          title: 'Bạn có đơn đặt sân mới.',
+          content: `Đơn đặt sân ${yard.footballField.name} ngày ${data.bookingDate} khung giờ ${startH}-${endH}.`,
+          metadata: {
+            bookingId: booking.id,
+            bookingDate: data.bookingDate,
+            timeSlot: `${startH}-${endH}`,
+          } as any,
+        },
+      });
+    }).catch(() => {});
+
+    return booking;
   }
 
 async createOfflineBooking(ownerId: string, fieldYardId: string, data: CreateOfflineBookingDto) {
@@ -89,12 +118,12 @@ async createOfflineBooking(ownerId: string, fieldYardId: string, data: CreateOff
     });
   }
   /**
-   * Cancel a booking. Validates the user owns it, then:
-   * - Sets booking status = CANCELLED
-   * - If paymentStatus = PAID, triggers refund creation (sets REFUND_PENDING)
+   * Cancel a booking (>1h before start time limit)
+   * - If UNPAID: sets status = CANCELLED
+   * - If PAID: triggers VNPay mock refund, sets status = CANCELLED & paymentStatus = REFUNDED, creates Refund record and Notification
    */
   async cancelBooking(bookingId: string, userId: string, reason?: string) {
-    const booking = await this.bookingRepository.findById(bookingId);
+    const booking = await this.bookingRepository.findWithDetails(bookingId);
 
     if (!booking) throw new NotFoundException('Không tìm thấy đơn đặt sân');
     if (booking.userId !== userId) {
@@ -104,20 +133,55 @@ async createOfflineBooking(ownerId: string, fieldYardId: string, data: CreateOff
       throw new BadRequestException('Đơn đặt sân đã được huỷ trước đó');
     }
 
-    await this.prisma.booking.update({
-      where: { id: bookingId },
-      data: {
-        status: BookingStatus.CANCELLED,
-        cancelledAt: new Date(),
-        cancelledReason: reason ?? null,
-      },
-    });
-
-    if (booking.paymentStatus === PaymentStatus.PAID && this.refundService) {
-      await this.refundService.createRefund(bookingId, reason);
+    if (booking.casualMatch && booking.casualMatch.status !== CasualMatchStatus.CANCELLED) {
+      throw new BadRequestException('Đơn đặt sân này đang có trận vãng lai được tạo, không được phép hủy.');
     }
 
-    return { success: true, message: 'Huỷ đặt sân thành công' };
+    // Cutoff validation: matchStart > 1h from now
+    const bookingDateStr = format(new Date(booking.bookingDate), 'yyyy-MM-dd');
+    const startTimeDate = new Date(booking.startTime);
+    const hours = String(startTimeDate.getUTCHours()).padStart(2, '0');
+    const minutes = String(startTimeDate.getUTCMinutes()).padStart(2, '0');
+    const matchStart = new Date(`${bookingDateStr}T${hours}:${minutes}:00Z`);
+
+    const now = new Date();
+    const cutoffTime = new Date(matchStart.getTime() - 60 * 60 * 1000);
+
+    if (now > cutoffTime) {
+      throw new BadRequestException('Không thể hủy booking trước giờ thi đấu dưới 1 giờ.');
+    }
+
+    const isPaid = booking.paymentStatus === PaymentStatus.PAID;
+    let refundTransactionNo: string | undefined;
+    let refundedAt: Date | undefined;
+
+    if (isPaid) {
+      const vnpayService = new VNPayService();
+      const refundRes = await vnpayService.refundPayment({
+        txnRef: bookingId,
+        amount: Number(booking.totalPrice),
+        reason,
+      });
+      if (refundRes.success) {
+        refundTransactionNo = refundRes.refundTransactionNo;
+        refundedAt = refundRes.refundedAt;
+      }
+    }
+
+    const updatedBooking = await this.bookingRepository.cancelBookingWithTransaction({
+      bookingId,
+      userId,
+      reason,
+      isPaid,
+      refundTransactionNo,
+      refundedAt,
+    });
+
+    return {
+      success: true,
+      message: 'Hủy đặt sân thành công',
+      data: updatedBooking,
+    };
   }
 
   private calculateTotalPrice(
@@ -125,9 +189,6 @@ async createOfflineBooking(ownerId: string, fieldYardId: string, data: CreateOff
     end: string,
     rules: any[],
   ): number {
-    // Logic: Find rule that covers the time range.
-    // In a production system, this could be more complex (e.g., spanning multiple partial rules).
-    // For simplicity, we find the first matching rule or return a default.
     const startTimeObj = new Date(`1970-01-01T${start}:00Z`);
     const endTimeObj = new Date(`1970-01-01T${end}:00Z`);
 
@@ -138,7 +199,6 @@ async createOfflineBooking(ownerId: string, fieldYardId: string, data: CreateOff
     });
 
     if (!matchingRule) {
-      // Fallback price if no rules match
       return 100000;
     }
 
@@ -174,36 +234,69 @@ async createOfflineBooking(ownerId: string, fieldYardId: string, data: CreateOff
   }
 
   async getBookingsForCreateCasual(userId: string) {
-    const now = new Date();
-    const bookings = await this.prisma.booking.findMany({
-      where: {
-        userId,
-        status: BookingStatus.CONFIRMED,
-        paymentStatus: PaymentStatus.PAID,
-        casualMatch: null,
-        bookingDate: {
-          gte: new Date(new Date().setHours(0, 0, 0, 0)),
-        },
-      },
-      include: {
-        fieldYard: {
-          include: {
-            footballField: true,
-          },
-        },
-      },
-      orderBy: {
-        bookingDate: 'asc',
-      },
+    return await this.bookingRepository.findEligibleForCasualMatch(userId);
+  }
+
+  async ownerCancelBooking(ownerId: string, bookingId: string, reason: string) {
+    const booking = await this.bookingRepository.findWithDetails(bookingId);
+    if (!booking) throw new NotFoundException('Không tìm thấy đơn đặt sân');
+
+    // Verify owner owns this field
+    if (booking.fieldYard?.footballField?.ownerId !== ownerId) {
+      throw new ForbiddenException('Bạn không có quyền hủy đơn đặt sân này');
+    }
+
+    // Only CONFIRMED or PENDING bookings can be owner-cancelled
+    if (booking.status !== BookingStatus.CONFIRMED && booking.status !== BookingStatus.PENDING) {
+      throw new BadRequestException('Chỉ có thể hủy đơn đặt sân đang ở trạng thái CONFIRMED hoặc PENDING');
+    }
+
+    const isPaid = booking.paymentStatus === PaymentStatus.PAID;
+
+    // Get owner info for notification/email
+    const ownerUser = await this.prisma.user.findUnique({
+      where: { id: ownerId },
+      select: { firstName: true, lastName: true, email: true },
+    });
+    const ownerName = ownerUser
+      ? `${ownerUser.firstName} ${ownerUser.lastName}`
+      : 'Chủ sân';
+
+    const updatedBooking = await this.bookingRepository.ownerCancelBooking({
+      bookingId,
+      ownerId,
+      ownerName,
+      reason,
+      isPaid,
     });
 
-    const filtered = bookings.filter((b) => {
-      const matchStart = new Date(b.bookingDate);
-      const time = new Date(b.startTime);
-      matchStart.setHours(time.getHours(), time.getMinutes(), 0, 0);
-      return matchStart > now;
-    });
+    // Send email to user (fire-and-forget, non-blocking)
+    const userWithEmail = (updatedBooking as any).user;
+    if (userWithEmail?.email) {
+      const fieldYard = (updatedBooking as any).fieldYard;
+      const startTime = new Date(booking.startTime);
+      const endTime = new Date(booking.endTime);
+      const timeSlot = `${String(startTime.getUTCHours()).padStart(2, '0')}:${String(startTime.getUTCMinutes()).padStart(2, '0')} - ${String(endTime.getUTCHours()).padStart(2, '0')}:${String(endTime.getUTCMinutes()).padStart(2, '0')}`;
 
-    return filtered;
+      this.emailService.sendOwnerCancelBookingEmail(userWithEmail.email, {
+        userName: `${userWithEmail.firstName ?? ''} ${userWithEmail.lastName ?? ''}`.trim() || userWithEmail.username,
+        fieldName: fieldYard?.footballField?.name ?? 'Sân bóng',
+        yardName: fieldYard?.name ?? '',
+        bookingDate: format(new Date(booking.bookingDate), 'dd/MM/yyyy'),
+        timeSlot,
+        cancelledBy: ownerName,
+        cancelledAt: format(new Date(), 'dd/MM/yyyy HH:mm'),
+        reason,
+        isPaid,
+      }).catch(() => {
+        // ponytail: email failure must not break the cancel flow
+      });
+    }
+
+    return {
+      success: true,
+      message: 'Hủy đặt sân thành công',
+      data: updatedBooking,
+    };
   }
 }

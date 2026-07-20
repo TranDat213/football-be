@@ -24,7 +24,7 @@ const fieldRepository = new PrismaFieldRepository(prisma);
 const subFieldRepository = new PrismaSubFieldRepository(prisma);
 const operatingHourRepository = new PrismaOperatingHourRepository(prisma);
 const priceRuleRepository = new PrismaPriceRuleRepository(prisma);
-const fieldService = new FieldService(fieldRepository);
+const fieldService = new FieldService(fieldRepository, prisma);
 const createFootballFieldUseCase = new CreateFootballFieldUseCase(
   prisma,
   fieldRepository,

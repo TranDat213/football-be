@@ -1,4 +1,4 @@
-import { OwnerRegistration, User, UserRole } from '@prisma/client';
+import { OwnerRegistration, OwnerRegistrationStatus, PrismaClient, User, UserRole } from '@prisma/client';
 import { IUserRepository } from '../domain/user.repository';
 import {
   AddOwnerDto,
@@ -20,9 +20,13 @@ import {
 } from '@/utils/cloudinary';
 import 'multer';
 import bcrypt from 'bcryptjs';
+import { notifyAllAdmins } from '@/modules/notification/application/notification.service';
 
 export class UserService {
-  constructor(private readonly userRepository: IUserRepository) {}
+  constructor(
+    private readonly userRepository: IUserRepository,
+    private readonly prisma?: PrismaClient,
+  ) {}
 
   async getProfileById(id: string): Promise<User | null> {
     const userProfile = await this.userRepository.getProfileById(id);
@@ -191,7 +195,20 @@ export class UserService {
           throw new BadRequestException('You are already an owner.');
         }
       }
-      return await this.userRepository.createOwnerRegister(data);
+      const registration = await this.userRepository.createOwnerRegister(data);
+
+      // Notify all admins about new owner registration request
+      if (this.prisma) {
+        notifyAllAdmins(this.prisma, {
+          entityType: 'OwnerRegistration',
+          entityId: registration.id,
+          type: 'OWNER_REGISTER_WAITING',
+          title: 'Có phiếu đăng ký chủ sân cần phê duyệt.',
+          content: `${data.first_name} ${data.last_name} đã gửi yêu cầu đăng ký chủ sân.`,
+        }).catch(() => {});
+      }
+
+      return registration;
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -228,7 +245,27 @@ export class UserService {
       if (!ownerRegister) {
         throw new NotFoundException('Owner register not found');
       }
-      return await this.userRepository.updateOwnerRegisterStatus(id, data);
+      const result = await this.userRepository.updateOwnerRegisterStatus(id, data);
+
+      // Notify user when approved
+      if (
+        this.prisma &&
+        data.status === OwnerRegistrationStatus.APPROVED &&
+        ownerRegister.userId
+      ) {
+        this.prisma.notification.create({
+          data: {
+            recipientId: ownerRegister.userId,
+            entityType: 'OwnerRegistration',
+            entityId: id,
+            type: 'OWNER_REGISTER_APPROVED' as any,
+            title: 'Đăng ký chủ sân được phê duyệt',
+            content: 'Tài khoản của bạn đã được cấp quyền chủ sân.',
+          },
+        }).catch(() => {});
+      }
+
+      return result;
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
