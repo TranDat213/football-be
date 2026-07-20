@@ -2,6 +2,7 @@ import {
   FieldImage,
   FieldStatus,
   FootballField,
+  PrismaClient,
   UserRole,
 } from '@prisma/client';
 import {
@@ -27,7 +28,10 @@ import { formatMinutes, SLOT_MINUTES, toMinutes } from '@/config/time.config';
  *
  */
 export class FieldService {
-  constructor(private readonly fieldRepository: IFieldRepository) {}
+  constructor(
+    private readonly fieldRepository: IFieldRepository,
+    private readonly prisma?: PrismaClient,
+  ) {}
 
   async generateUniqueSlug(name: string): Promise<string> {
     const baseSlug = normalizeSlug(name);
@@ -87,14 +91,28 @@ export class FieldService {
     if (!field) throw new BadRequestException('Field not found');
     if (field.deletedAt) throw new BadRequestException('Field is deleted');
 
+    let updatedField: FootballField;
     if (status === FieldStatus.INACTIVE) {
-      return await this.fieldRepository.updateFieldStatusWithCascade(
-        fieldId,
-        status,
-      );
+      updatedField = await this.fieldRepository.updateFieldStatusWithCascade(fieldId, status);
+    } else {
+      updatedField = await this.fieldRepository.updateFieldStatus(fieldId, status);
     }
 
-    return await this.fieldRepository.updateFieldStatus(fieldId, status);
+    // Notify owner when field is approved (ACTIVE)
+    if (status === FieldStatus.ACTIVE && this.prisma) {
+      this.prisma.notification.create({
+        data: {
+          recipientId: field.ownerId,
+          entityType: 'FootballField',
+          entityId: fieldId,
+          type: 'FIELD_APPROVED' as any,
+          title: 'Sân bóng của bạn đã được phê duyệt.',
+          content: `Sân ${field.name} đã được Admin phê duyệt và hiện đang hoạt động.`,
+        },
+      }).catch(() => {});
+    }
+
+    return updatedField;
   }
 
   async findByOwnerId(

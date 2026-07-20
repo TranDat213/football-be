@@ -9,6 +9,7 @@ import {
   PrismaClient,
 } from '@prisma/client';
 import {
+  BookingWithDetails,
   CreateBookingLockData,
   IBookingRepository,
 } from '../domain/booking.repository';
@@ -97,6 +98,7 @@ export class PrismaBookingRepository implements IBookingRepository {
               footballField: true,
             },
           },
+          casualMatch: true,
         },
       }),
       this.prisma.booking.count({ where }),
@@ -356,6 +358,222 @@ export class PrismaBookingRepository implements IBookingRepository {
     return await this.prisma.footballField.findUnique({
       where: {id, deletedAt:  null},
       include: {owner: true},
-    })
+    });
+  }
+
+  async findWithDetails(id: string): Promise<BookingWithDetails | null> {
+    return await this.prisma.booking.findUnique({
+      where: { id, deletedAt: null },
+      include: {
+        payment: true,
+        fieldYard: { include: { footballField: true } },
+        casualMatch: true,
+      },
+    });
+  }
+
+  async findEligibleForCasualMatch(userId: string): Promise<Booking[]> {
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        userId,
+        status: BookingStatus.CONFIRMED,
+        paymentStatus: PaymentStatus.PAID,
+        casualMatch: null,
+        bookingDate: {
+          gte: new Date(new Date().setHours(0, 0, 0, 0)),
+        },
+      },
+      include: {
+        fieldYard: {
+          include: {
+            footballField: true,
+          },
+        },
+      },
+      orderBy: {
+        bookingDate: 'asc',
+      },
+    });
+
+    const now = new Date();
+    return bookings.filter((b) => {
+      const matchStart = new Date(b.bookingDate);
+      const time = new Date(b.startTime);
+      matchStart.setHours(time.getHours(), time.getMinutes(), 0, 0);
+      return matchStart > now;
+    });
+  }
+
+  async cancelBookingWithTransaction(params: {
+    bookingId: string;
+    userId: string;
+    reason?: string;
+    isPaid: boolean;
+    refundTransactionNo?: string;
+    refundedAt?: Date;
+  }): Promise<Booking> {
+    const { bookingId, userId, reason, isPaid, refundTransactionNo, refundedAt } = params;
+
+    return await this.prisma.$transaction(async (tx) => {
+      const booking = await tx.booking.findUnique({
+        where: { id: bookingId },
+        include: { payment: true, fieldYard: { include: { footballField: true } }, casualMatch: true },
+      });
+
+      let finalPaymentStatus: PaymentStatus = booking?.paymentStatus ?? PaymentStatus.UNPAID;
+      const cancelledAt = new Date();
+
+      if (isPaid && booking) {
+        finalPaymentStatus = PaymentStatus.REFUNDED;
+
+        if (booking.payment) {
+          await tx.payment.update({
+            where: { id: booking.payment.id },
+            data: { status: PaymentStatus.REFUNDED },
+          });
+        }
+
+        // Create/update Refund
+        await tx.refund.upsert({
+          where: { bookingId },
+          create: {
+            bookingId,
+            paymentId: booking.payment?.id ?? null,
+            amount: booking.totalPrice,
+            reason: reason ?? null,
+            status: 'SUCCESS' as any,
+            processedAt: refundedAt ?? new Date(),
+            adminNote: `VNPay Mock Refund: ${refundTransactionNo || 'COMPLETED'}`,
+          },
+          update: {
+            status: 'SUCCESS' as any,
+            processedAt: refundedAt ?? new Date(),
+            adminNote: `VNPay Mock Refund: ${refundTransactionNo || 'COMPLETED'}`,
+          },
+        });
+
+        // Notification
+        const fieldName = booking.fieldYard?.footballField?.name || 'Sân bóng';
+        await tx.notification.create({
+          data: {
+            recipientId: userId,
+            actorId: userId,
+            entityType: 'Booking',
+            entityId: bookingId,
+            type: 'BOOKING_CANCELLED' as any,
+            title: 'Đã hủy đơn đặt sân và hoàn tiền',
+            content: `Đơn đặt sân ${fieldName} của bạn đã được hủy thành công. Số tiền ${Number(booking.totalPrice).toLocaleString('vi-VN')}đ đã được hoàn lại qua VNPay.`,
+          },
+        });
+      }
+
+      // Update Booking status to CANCELLED
+      const updatedBooking = await tx.booking.update({
+        where: { id: bookingId },
+        data: {
+          status: BookingStatus.CANCELLED,
+          paymentStatus: finalPaymentStatus,
+          cancelledAt,
+          cancelledReason: reason ?? null,
+        },
+        include: {
+          fieldYard: { include: { footballField: true } },
+          payment: true,
+          refund: true,
+        },
+      });
+
+      // Cascade cancel CasualMatch if exists
+      if (booking?.casualMatch) {
+        await tx.casualMatch.update({
+          where: { id: booking.casualMatch.id },
+          data: { status: 'CANCELLED' as any },
+        });
+      }
+
+      return updatedBooking;
+    });
+  }
+  async ownerCancelBooking(params: {
+    bookingId: string;
+    ownerId: string;
+    ownerName: string;
+    reason: string;
+    isPaid: boolean;
+  }): Promise<Booking> {
+    const { bookingId, ownerId, ownerName, reason, isPaid } = params;
+    const cancelledAt = new Date();
+
+    return await this.prisma.$transaction(async (tx) => {
+      const booking = await tx.booking.findUnique({
+        where: { id: bookingId },
+        include: { payment: true, user: true, fieldYard: { include: { footballField: true } } },
+      });
+
+      if (!booking) throw new Error('Booking not found');
+
+      // Mark payment as REFUND_PENDING if paid
+      if (isPaid && booking.payment) {
+        await tx.payment.update({
+          where: { id: booking.payment.id },
+          data: { status: PaymentStatus.REFUND_PENDING },
+        });
+
+        await tx.refund.upsert({
+          where: { bookingId },
+          create: {
+            bookingId,
+            paymentId: booking.payment.id,
+            amount: booking.totalPrice,
+            reason,
+            status: 'PENDING' as any,
+          },
+          update: {
+            status: 'PENDING' as any,
+            reason,
+          },
+        });
+      }
+
+      // Notify user
+      const fieldName = booking.fieldYard?.footballField?.name ?? 'Sân bóng';
+      await tx.notification.create({
+        data: {
+          recipientId: booking.userId,
+          actorId: ownerId,
+          entityType: 'Booking',
+          entityId: bookingId,
+          type: 'OWNER_CANCEL_BOOKING' as any,
+          title: 'Đơn đặt sân của bạn đã bị chủ sân hủy.',
+          content: `Lý do: ${reason}`,
+          metadata: {
+            bookingId,
+            fieldName,
+            reason,
+            cancelledBy: ownerName,
+            cancelledAt: cancelledAt.toISOString(),
+          } as any,
+        },
+      });
+
+      // Update booking
+      return await tx.booking.update({
+        where: { id: bookingId },
+        data: {
+          status: BookingStatus.OWNER_CANCELLED,
+          paymentStatus: isPaid ? PaymentStatus.REFUND_PENDING : undefined,
+          ownerCancelReason: reason,
+          ownerCancelledAt: cancelledAt,
+          ownerCancelledBy: ownerName,
+        } as any,
+        include: {
+          fieldYard: { include: { footballField: true } },
+          payment: true,
+          refund: true,
+          user: true,
+        },
+      });
+    });
   }
 }
+

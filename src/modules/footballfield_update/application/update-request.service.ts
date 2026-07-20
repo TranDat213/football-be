@@ -1,14 +1,14 @@
 import { IFootballFieldUpdateRequestRepository } from '../domain/update-request.repository';
 import { UpdateFootballFieldCompleteDto } from '@/modules/field/dto/update-field-complete.dto';
 import { UpdateFootballFieldUseCase } from '@/modules/field/application/update-football-field.usecase';
-import { IFieldRepository } from '@/modules/field/domain/field.repository'; // sửa lại path đúng theo project
-
+import { IFieldRepository } from '@/modules/field/domain/field.repository';
 import { ICategoryRepository } from '@/modules/field_category/domain/category.repository';
 import {
   BadRequestException,
   InternalServerException,
 } from '@/utils/app-error';
-import { FieldStatus, FootballFieldUpdateRequestStatus } from '@prisma/client';
+import { FieldStatus, FootballFieldUpdateRequestStatus, PrismaClient } from '@prisma/client';
+import { notifyAllAdmins } from '@/modules/notification/application/notification.service';
 
 export class FootballFieldUpdateRequestService {
   constructor(
@@ -16,6 +16,7 @@ export class FootballFieldUpdateRequestService {
     private readonly fieldRepo: IFieldRepository,
     private readonly categoryRepo: ICategoryRepository,
     private readonly updateFieldUseCase: UpdateFootballFieldUseCase,
+    private readonly prisma?: PrismaClient,
   ) {}
 
   async createRequest(
@@ -57,12 +58,25 @@ export class FootballFieldUpdateRequestService {
     }
 
     // 4. Tạo request
-    return this.requestRepo.create({
+    const request = await this.requestRepo.create({
       footballFieldId: fieldId,
       ownerId,
       payload: dto,
       status: FootballFieldUpdateRequestStatus.PENDING,
     });
+
+    // Notify all admins about update request (fire-and-forget)
+    if (this.prisma) {
+      notifyAllAdmins(this.prisma, {
+        entityType: 'FootballFieldUpdateRequest',
+        entityId: request.id,
+        type: 'FIELD_UPDATE_WAITING',
+        title: 'Có phiếu cập nhật sân cần phê duyệt.',
+        content: `Sân ${field.name} đã gửi yêu cầu cập nhật.`,
+      }).catch(() => {});
+    }
+
+    return request;
   }
 
   async approveRequest(requestId: string, adminId: string) {
@@ -95,6 +109,21 @@ export class FootballFieldUpdateRequestService {
       reviewedBy: adminId,
       reviewedAt: new Date(),
     });
+
+    // Notify owner that update was approved
+    if (this.prisma) {
+      this.prisma.notification.create({
+        data: {
+          recipientId: request.ownerId,
+          actorId: adminId,
+          entityType: 'FootballFieldUpdateRequest',
+          entityId: requestId,
+          type: 'FIELD_CREATED_APPROVED' as any,
+          title: 'Phếu tạo sân đã được duyệt.',
+          content: 'Yêu cầu cập nhật sân của bạn đã được Admin phê duyệt.',
+        },
+      }).catch(() => {});
+    }
 
     // 3. Soft delete request sau khi áp dụng thành công
     await this.requestRepo.softDelete(requestId);

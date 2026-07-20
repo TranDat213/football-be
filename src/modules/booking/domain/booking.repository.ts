@@ -2,11 +2,19 @@ import {
   Booking,
   BookingSource,
   BookingStatus,
+  CasualMatch,
   FieldPriceRule,
   FieldYard,
   FootballField,
+  Payment,
   PaymentStatus,
 } from '@prisma/client';
+
+export type BookingWithDetails = Booking & {
+  casualMatch?: CasualMatch | null;
+  payment?: Payment | null;
+  fieldYard?: (FieldYard & { footballField?: FootballField | null }) | null;
+};
 
 export interface CreateBookingLockData {
   userId: string;
@@ -48,4 +56,21 @@ export interface IBookingRepository {
   releaseExpiredLocks(): Promise<number>;
   findYardWithOwnerById(id: string): Promise<FieldYard | null>;
   findFieldByFieldId(id:string): Promise<FootballField | null>;
+  findWithDetails(id: string): Promise<BookingWithDetails | null>;
+  findEligibleForCasualMatch(userId: string): Promise<Booking[]>;
+  cancelBookingWithTransaction(params: {
+    bookingId: string;
+    userId: string;
+    reason?: string;
+    isPaid: boolean;
+    refundTransactionNo?: string;
+    refundedAt?: Date;
+  }): Promise<Booking>;
+  ownerCancelBooking(params: {
+    bookingId: string;
+    ownerId: string;
+    ownerName: string;
+    reason: string;
+    isPaid: boolean;
+  }): Promise<Booking>;
 }

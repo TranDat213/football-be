@@ -13,6 +13,7 @@ import fieldYardRouter from './field-yard.route';
 import chatRouter from './chat.route';
 import casualMatchRouter from './casual-match.route';
 import fieldUpdateRouter from './field-update.route';
+import notificationRouter from './notification.route';
 
 const routers = Router();
 
@@ -30,4 +31,5 @@ routers.use('/field-yards', fieldYardRouter);
 routers.use('/chat', chatRouter);
 routers.use('/casual-matches', casualMatchRouter);
 routers.use('/field-update', fieldUpdateRouter);
+routers.use('/notifications', notificationRouter);
 export default routers;

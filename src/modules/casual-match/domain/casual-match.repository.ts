@@ -59,4 +59,18 @@ export interface ICasualMatchRepository {
   // Participation history
   findByParticipantUserId(userId: string, filter: ParticipationFilter): Promise<{ data: any[]; total: number }>;
   findParticipantsByMatchId(matchId: string): Promise<any[]>;
+  findBookingForCasualCreate(bookingId: string): Promise<any | null>;
+  findActiveMatchesForSync(): Promise<any[]>;
+  findWithBooking(id: string): Promise<any | null>;
+  cancelParticipationWithTransaction(params: {
+    casualMatchId: string;
+    userId: string;
+    participantId: string;
+    isPaid: boolean;
+    slotCount: number;
+    isFull: boolean;
+    hostId: string;
+    totalAmount: number;
+  }): Promise<any>;
 }
+
