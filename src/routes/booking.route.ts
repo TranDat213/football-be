@@ -76,6 +76,15 @@ bookingRouter.get(
 );
 
 bookingRouter.get(
+  '/owner/analytics',
+  authenticate,
+  authorize(UserRole.OWNER),
+  asyncHandler(
+    bookingController.getOwnerRevenueStats.bind(bookingController),
+  ),
+);
+
+bookingRouter.get(
   '/booking-date',
   authenticate,
   authorize(UserRole.ADMIN),

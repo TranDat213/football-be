@@ -70,16 +70,6 @@ enum PaymentMethod {
   BANK_TRANSFER
 }
 
-enum ReviewStatus {
-  VISIBLE
-  HIDDEN
-  FLAGGED
-}
-
-enum ReactionType {
-  LIKE
-  DISLIKE
-}
 
 enum CasualMatchStatus {
   OPEN         // accepting participants
@@ -128,11 +118,6 @@ enum SkillLevel {
   PRO
 }
 
-enum MessageRole {
-  USER
-  AI
-  SYSTEM
-}
 
 enum YardType {
   FIVE_A_SIDE
@@ -167,12 +152,6 @@ enum ProviderType {
   FACEBOOK
 }
 
-enum PayoutStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-}
 
 enum TimeSlotLabel {
   REGULAR
@@ -211,15 +190,11 @@ model User {
   // Relations
   footballFields        FootballField[]
   bookings              Booking[]
-  reviews               FieldReview[]
-  reviewReactions       FieldReviewReaction[]
   casualMatches         CasualMatch[]
   casualParticipations  CasualMatchParticipant[]
   sentNotifications     Notification[]         @relation("NotificationActor")
   receivedNotifications Notification[]         @relation("NotificationRecipient")
-  conversations         Conversation[]
   ownerRegistration     OwnerRegistration[]
-  payouts               Payout[]
   updateRequests        FootballFieldUpdateRequest[]
   reviewedRequests      FootballFieldUpdateRequest[] @relation("Reviewer")
 
@@ -270,7 +245,6 @@ model FootballField {
   category   FieldCategory? @relation(fields: [categoryId], references: [id])
   yards      FieldYard[]
   images     FieldImage[]
-  reviews    FieldReview[]
   updateRequests FootballFieldUpdateRequest[]
   // ponytail: matchPosts removed; browse via Booking → CasualMatch
 
@@ -423,21 +397,6 @@ model Commission {
   @@map("commissions")
 }
 
-model Payout {
-  id            String       @id @default(uuid())
-  ownerId       String       @map("owner_id")
-  amount        Decimal      @db.Decimal(12, 2)
-  status        PayoutStatus @default(PENDING)
-  bankAccount   String       @map("bank_account")
-  bankName      String       @map("bank_name")
-  transactionId String?      @unique @map("transaction_id")
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt @map("updated_at")
-
-  owner User @relation(fields: [ownerId], references: [id])
-
-  @@map("payouts")
-}
 
 model Payment {
   id              String        @id @default(uuid())
@@ -476,51 +435,6 @@ model Refund {
   @@map("refunds")
 }
 
-// ─────────────────────────────────────────
-// DOMAIN: REVIEWS
-// ─────────────────────────────────────────
-
-model FieldReview {
-  id         String       @id @default(uuid())
-  fieldId    String       @map("field_id")
-  userId     String       @map("user_id")
-  parentId   String?      @map("parent_id")
-  content    String       @db.Text
-  rating     Int?         @db.SmallInt
-  likeCount  Int          @default(0) @map("like_count")
-  replyCount Int          @default(0) @map("reply_count")
-  status     ReviewStatus @default(VISIBLE)
-  createdAt  DateTime     @default(now()) @map("created_at")
-  updatedAt  DateTime     @updatedAt @map("updated_at")
-  deletedAt  DateTime?    @map("deleted_at")
-
-  field     FootballField         @relation(fields: [fieldId], references: [id])
-  user      User                  @relation(fields: [userId], references: [id])
-  parent    FieldReview?          @relation("ReviewReplies", fields: [parentId], references: [id])
-  replies   FieldReview[]         @relation("ReviewReplies")
-  reactions FieldReviewReaction[]
-
-  @@index([fieldId, status, deletedAt])
-  @@index([userId, createdAt])
-  @@index([parentId])
-  @@map("field_reviews")
-}
-
-model FieldReviewReaction {
-  id        String       @id @default(uuid())
-  reviewId  String       @map("review_id")
-  userId    String       @map("user_id")
-  type      ReactionType
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
-  deletedAt DateTime?    @map("deleted_at")
-
-  review FieldReview @relation(fields: [reviewId], references: [id])
-  user   User        @relation(fields: [userId], references: [id])
-
-  @@unique([reviewId, userId])
-  @@map("field_review_reactions")
-}
 
 // ─────────────────────────────────────────
 // DOMAIN: CASUAL MATCH (Đặt vãng lai)
@@ -629,43 +543,6 @@ model Notification {
   @@map("notifications")
 }
 
-// ─────────────────────────────────────────
-// DOMAIN: CHAT & AI
-// ─────────────────────────────────────────
-
-model Conversation {
-  id        String    @id @default(uuid())
-  userId    String    @map("user_id")
-  title     String?   @db.VarChar(255)
-  metadata  Json?     @db.JsonB
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  deletedAt DateTime? @map("deleted_at")
-
-  user     User      @relation(fields: [userId], references: [id])
-  messages Message[]
-
-  @@index([userId, updatedAt(sort: Desc)])
-  @@map("conversations")
-}
-
-model Message {
-  id             String      @id @default(uuid())
-  conversationId String      @map("conversation_id")
-  role           MessageRole
-  content        String      @db.Text
-  tokensUsed     Int?        @map("tokens_used")
-  embeddingId    String?     @map("embedding_id") @db.VarChar(255)
-  metadata       Json?       @db.JsonB
-  createdAt      DateTime    @default(now()) @map("created_at")
-  updatedAt      DateTime    @updatedAt
-  deletedAt      DateTime?   @map("deleted_at")
-
-  conversation Conversation @relation(fields: [conversationId], references: [id])
-
-  @@index([conversationId, createdAt])
-  @@map("messages")
-}
 
 model OwnerRegistration {
   id        String @id @default(uuid())

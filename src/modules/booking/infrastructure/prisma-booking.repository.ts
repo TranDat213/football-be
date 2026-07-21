@@ -575,5 +575,106 @@ export class PrismaBookingRepository implements IBookingRepository {
       });
     });
   }
+
+  async getOwnerRevenueStats(ownerId: string, year?: number) {
+    const targetYear = year || new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+
+    const startDate = new Date(Date.UTC(targetYear, 0, 1, 0, 0, 0));
+    const endDate = new Date(Date.UTC(targetYear, 11, 31, 23, 59, 59));
+
+    const ownerFields = await this.prisma.footballField.findMany({
+      where: { ownerId, deletedAt: null },
+      select: { id: true, name: true },
+    });
+
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        fieldYard: {
+          footballField: {
+            ownerId,
+            deletedAt: null,
+          },
+        },
+        deletedAt: null,
+        status: BookingStatus.CONFIRMED,
+        bookingDate: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: {
+        id: true,
+        totalPrice: true,
+        bookingDate: true,
+        fieldYard: {
+          select: {
+            footballFieldId: true,
+          },
+        },
+      },
+    });
+
+    const monthlyRevenue = Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      monthLabel: `Tháng ${i + 1}`,
+      revenue: 0,
+      bookingCount: 0,
+    }));
+
+    const fieldRevenueMap = new Map<string, { fieldId: string; fieldName: string; revenue: number; bookingCount: number }>();
+    ownerFields.forEach((field) => {
+      fieldRevenueMap.set(field.id, {
+        fieldId: field.id,
+        fieldName: field.name,
+        revenue: 0,
+        bookingCount: 0,
+      });
+    });
+
+    let totalRevenueYear = 0;
+    let totalBookingsYear = 0;
+    let totalRevenueThisMonth = 0;
+    let totalBookingsThisMonth = 0;
+
+    bookings.forEach((b) => {
+      const bDate = new Date(b.bookingDate);
+      const monthIndex = bDate.getUTCMonth();
+      const price = Number(b.totalPrice) || 0;
+
+      if (monthIndex >= 0 && monthIndex < 12) {
+        monthlyRevenue[monthIndex].revenue += price;
+        monthlyRevenue[monthIndex].bookingCount += 1;
+      }
+
+      totalRevenueYear += price;
+      totalBookingsYear += 1;
+
+      if (targetYear === new Date().getFullYear() && monthIndex + 1 === currentMonth) {
+        totalRevenueThisMonth += price;
+        totalBookingsThisMonth += 1;
+      }
+
+      const fieldId = b.fieldYard?.footballFieldId;
+      if (fieldId && fieldRevenueMap.has(fieldId)) {
+        const item = fieldRevenueMap.get(fieldId)!;
+        item.revenue += price;
+        item.bookingCount += 1;
+      }
+    });
+
+    const fieldRevenue = Array.from(fieldRevenueMap.values());
+
+    return {
+      monthlyRevenue,
+      fieldRevenue,
+      summary: {
+        totalRevenueThisMonth,
+        totalRevenueYear,
+        totalBookingsThisMonth,
+        totalBookingsYear,
+      },
+    };
+  }
 }
 

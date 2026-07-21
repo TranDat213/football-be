@@ -73,4 +73,14 @@ export interface IBookingRepository {
     reason: string;
     isPaid: boolean;
   }): Promise<Booking>;
+  getOwnerRevenueStats(ownerId: string, year?: number): Promise<{
+    monthlyRevenue: { month: number; monthLabel: string; revenue: number; bookingCount: number }[];
+    fieldRevenue: { fieldId: string; fieldName: string; revenue: number; bookingCount: number }[];
+    summary: {
+      totalRevenueThisMonth: number;
+      totalRevenueYear: number;
+      totalBookingsThisMonth: number;
+      totalBookingsYear: number;
+    };
+  }>;
 }
