@@ -299,4 +299,8 @@ async createOfflineBooking(ownerId: string, fieldYardId: string, data: CreateOff
       data: updatedBooking,
     };
   }
+
+  async getOwnerRevenueStats(ownerId: string, year?: number) {
+    return await this.bookingRepository.getOwnerRevenueStats(ownerId, year);
+  }
 }

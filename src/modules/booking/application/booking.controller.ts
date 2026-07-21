@@ -150,4 +150,14 @@ export class BookingController {
     const result = await this.bookingService.ownerCancelBooking(ownerId, bookingId, reason.trim());
     return res.status(200).json(result);
   }
+
+  async getOwnerRevenueStats(req: Request, res: Response, _next: NextFunction) {
+    const ownerId = req.user?.id as string;
+    const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+    const stats = await this.bookingService.getOwnerRevenueStats(ownerId, year);
+    return res.status(200).json({
+      message: 'Lấy thống kê doanh thu chủ sân thành công',
+      data: stats,
+    });
+  }
 }
