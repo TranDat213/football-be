@@ -3,38 +3,105 @@ import { SearchDocument } from '../infrastructure/rag/search-document';
 import { ToolExecutor } from '../infrastructure/ai/tool-executor';
 import { ChatMessage } from '../domain/chat-message';
 import { Env } from '@/config/env.config';
+import prisma from '@/lib/prisma';
 
-const SYSTEM_PROMPT = `Bạn là AI Chatbot của FootballHub.
+const SYSTEM_PROMPT = `Bạn là AI Assistant của hệ thống đặt sân bóng (FootballHub).
 
-Nhiệm vụ:
+NHIỆM VỤ:
+1. Hiểu ngôn ngữ tự nhiên của người dùng để giải đáp thắc mắc (FAQ, quy định, hướng dẫn) hoặc thực hiện tìm kiếm / tra cứu dữ liệu realtime bằng cách BẮT BUỘC gọi Function Tool.
+2. Trích xuất các thông tin tìm kiếm từ câu nói của người dùng:
+  + date: Ngày chơi (định dạng YYYY-MM-DD)
+  + time: Khung giờ chơi (định dạng HH:mm, ví dụ 19:00, 18:00, 08:00, 21:00)
+  + district: Tên Quận/Huyện (ví dụ "Quận 7", "Thủ Đức"...)
+  + yardType/fieldType: Loại sân (FIVE_A_SIDE cho sân 5, SEVEN_A_SIDE cho sân 7, ELEVEN_A_SIDE cho sân 11)
+  + keyword: Từ khóa tìm kiếm khác (nếu có)
 
-1. Nếu câu hỏi liên quan đến FAQ, chính sách, hướng dẫn:
-- Sử dụng tài liệu RAG.
-- Không bịa thông tin.
+QUY TẮC HIỂU THỜI GIAN:
+- "hôm nay" / "tối nay" => current_date
+- "ngày mai" => current_date + 1 ngày
+- "mốt" => current_date + 2 ngày
+- "cuối tuần" => Thứ 7 gần nhất trong tuần
+- "7h tối" => 19:00, "6h chiều" => 18:00, "8h sáng" => 08:00, "9h đêm" => 21:00
 
-2. Nếu câu hỏi yêu cầu dữ liệu realtime:
-- BẮT BUỘC gọi Function Tool.
-- Không tự suy đoán dữ liệu.
+QUY TẮC GỌI FUNCTION TOOL VÀ NGUYÊN TẮC KHÔNG HỎI LẠI (CỰC KỲ QUAN TRỌNG):
+1. BẮT BUỘC tự tính toán quy đổi thời gian tự nhiên thành ngày YYYY-MM-DD chính xác dựa trên THÔNG TIN THỜI GIAN HỆ THỐNG được cung cấp bên dưới.
+2. KHÔNG HỎI LẠI NGÀY nếu người dùng đã sử dụng các cụm từ chỉ thời gian như:
+   - hôm nay
+   - tối nay
+   - ngày mai
+   - mốt
+   - cuối tuần
+3. CHỈ hỏi lại khi THỰC SỰ THIẾU DỮ LIỆU CỐT LÕI không thể thực hiện tìm kiếm tối thiểu (ví dụ người dùng chỉ nói chung chung "tìm sân" mà hoàn toàn không có địa điểm lẫn thời gian).
+4. Nếu người dùng đưa ra các thông tin tìm kiếm khả thi (ví dụ chỉ có Quận 7, hoặc có Tối nay + Quận 7), HÃY GỌI TOOL NGAY VỚI THAM SỐ THU ĐƯỢC. Không bắt người dùng khai báo đủ tất cả các trường thông tin mới tìm kiếm.
 
-3. Nếu tool trả về dữ liệu có cấu trúc:
-- Chỉ tóm tắt kết quả bằng ngôn ngữ tự nhiên.
-- Không lặp lại toàn bộ JSON.
-- Không tự sinh URL.
-- Không tự tạo route.
-- Frontend sẽ render card và button dựa trên metadata.
+QUY TẮC TRẢ LỜI:
+- Nếu Tool trả về dữ liệu có cấu trúc: Chỉ tóm tắt kết quả bằng ngôn ngữ tự nhiên, thân thiện, ngắn gọn và sử dụng Markdown. Không lặp lại toàn bộ JSON thô. Không tự tạo URL hoặc route (Frontend sẽ tự hiển thị giao diện card/button dựa vào metadata).
+- Không tự suy đoán hay bịa đặt dữ liệu realtime nếu không gọi tool.`;
 
-4. Nếu thiếu tham số cần thiết:
-Ví dụ:
-- thiếu quận/huyện
-- thiếu ngày
-- thiếu khung giờ
+function getCurrentDateContext(): string {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'long',
+  });
+  const parts = formatter.formatToParts(now);
+  const year = parts.find((p) => p.type === 'year')?.value;
+  const month = parts.find((p) => p.type === 'month')?.value;
+  const day = parts.find((p) => p.type === 'day')?.value;
+  const weekday = parts.find((p) => p.type === 'weekday')?.value;
 
-hãy hỏi lại người dùng trước khi gọi tool.
+  const currentDate = `${year}-${month}-${day}`;
 
-5. Trả lời bằng tiếng Việt, thân thiện, ngắn gọn và sử dụng Markdown.
+  const dToday = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
 
-Ví dụ:
-"Tôi tìm thấy 3 sân phù hợp với yêu cầu của bạn. Bạn có thể xem chi tiết các sân bên dưới."`;
+  const dTomorrow = new Date(dToday);
+  dTomorrow.setDate(dTomorrow.getDate() + 1);
+  const dateTomorrow = dTomorrow.toISOString().split('T')[0];
+
+  const dDayAfterTomorrow = new Date(dToday);
+  dDayAfterTomorrow.setDate(dDayAfterTomorrow.getDate() + 2);
+  const dateDayAfterTomorrow = dDayAfterTomorrow.toISOString().split('T')[0];
+
+  const dayOfWeek = dToday.getDay(); // 0 = Sunday, 6 = Saturday
+  const daysUntilSaturday = (6 - dayOfWeek + 7) % 7;
+  const dWeekend = new Date(dToday);
+  dWeekend.setDate(dWeekend.getDate() + (daysUntilSaturday === 0 ? 0 : daysUntilSaturday));
+  const dateWeekend = dWeekend.toISOString().split('T')[0];
+
+  return `\n\nTHÔNG TIN THỜI GIAN HỆ THỐNG HIỆN TẠI (GMT+7):
+- Current date (hôm nay / tối nay): ${currentDate} (${weekday})
+- Ngày mai (current_date + 1): ${dateTomorrow}
+- Mốt (current_date + 2): ${dateDayAfterTomorrow}
+- Cuối tuần (Thứ 7 gần nhất): ${dateWeekend}`;
+}
+
+async function getAvailableLocationsContext(): Promise<string> {
+  try {
+    const fields = await prisma.footballField.findMany({
+      where: { status: 'ACTIVE', deletedAt: null },
+      select: { district: true, province: true },
+      distinct: ['district', 'province'],
+    });
+
+    const districts = Array.from(
+      new Set(fields.map((f: { district: string; province: string }) => f.district).filter(Boolean)),
+    );
+    const provinces = Array.from(
+      new Set(fields.map((f: { district: string; province: string }) => f.province).filter(Boolean)),
+    );
+
+    if (districts.length === 0 && provinces.length === 0) return '';
+
+    return `\n\nDANH SÁCH KHU VỰC CÓ SÂN BÓNG HIỆN TẠI TRÊN HỆ THỐNG:
+- Quận/Huyện có sân: ${districts.join(', ')}
+- Tỉnh/Thành có sân: ${provinces.join(', ')}`;
+  } catch {
+    return '';
+  }
+}
 
 export interface ChatResponse {
   role: 'assistant';
@@ -123,7 +190,8 @@ export class ChatService {
       ? `\nLưu ý: Người dùng HIỆN TẠI ĐÃ ĐĂNG NHẬP (ID: ${userId}). Bạn có thể sử dụng các tool cá nhân để lấy thông tin của họ.`
       : `\nLưu ý: Người dùng HIỆN TẠI CHƯA ĐĂNG NHẬP. Nếu họ hỏi về thông tin cá nhân như "lịch sử đặt sân của tôi" hoặc "các booking của tôi", hãy lịch sự yêu cầu họ đăng nhập trước.`;
 
-    const systemInstruction = SYSTEM_PROMPT + userContext;
+    const locationContext = await getAvailableLocationsContext();
+    const systemInstruction = SYSTEM_PROMPT + getCurrentDateContext() + locationContext + userContext;
 
     // Vòng 1: gọi LLM kèm tools
     const response = await genAI.models.generateContent({

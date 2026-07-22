@@ -19,6 +19,7 @@ export class ToolExecutor {
             fieldType: {
               type: 'string',
               enum: ['FIVE_A_SIDE', 'SEVEN_A_SIDE', 'ELEVEN_A_SIDE'],
+              description: 'Loại sân: FIVE_A_SIDE (sân 5), SEVEN_A_SIDE (sân 7), ELEVEN_A_SIDE (sân 11)',
             },
             maxPrice: { type: 'number', description: 'Mức giá tối đa' },
           },
@@ -96,9 +97,14 @@ export class ToolExecutor {
             date: {
               type: 'string',
               description:
-                'Ngày muốn chơi sân, định dạng YYYY-MM-DD (vd: 2026-07-15)',
+                'Ngày muốn chơi sân, định dạng YYYY-MM-DD (vd: 2026-07-22)',
             },
-            district: { type: 'string', description: 'Tên quận/huyện cần tìm' },
+            district: { type: 'string', description: 'Tên quận/huyện cần tìm, vd: Quận 7' },
+            fieldType: {
+              type: 'string',
+              enum: ['FIVE_A_SIDE', 'SEVEN_A_SIDE', 'ELEVEN_A_SIDE'],
+              description: 'Loại sân: FIVE_A_SIDE (sân 5), SEVEN_A_SIDE (sân 7), ELEVEN_A_SIDE (sân 11)',
+            },
           },
           required: ['date'],
         },
