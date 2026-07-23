@@ -183,67 +183,76 @@ export class FieldService {
     );
   }
 
- async getAvailability(fieldId: string, dateStr: string) {
-  const field = await this.findById(fieldId);
-  if(!field){
-    throw new BadRequestException('Sân không tồn tại');
-  }
-  if(field.status !== 'ACTIVE') {
-    throw new BadRequestException('Sân không hoạt động');
-  }
-  const date = new Date(dateStr);
-  const dayOfWeek = date.getUTCDay(); // 0=CN,1=T2,...,6=T7
-
-  const yards = await this.fieldRepository.getAvailability(fieldId, date);
-
-  const yardsWithSlots = yards.map((yard: any) => {
-    const bookedRanges: [number, number][] = yard.bookings.map((b: any) => [
-      toMinutes(b.startTime),
-      toMinutes(b.endTime),
-    ]);
-
-    const slots = [];
-    const timeSlots = yard.timeSlots.filter(
-      (slot: any) => slot.dayOfWeek === dayOfWeek,
-    );
-
-    for (const timeSlot of timeSlots) {
-      const openMin = toMinutes(timeSlot.startTime);
-      const closeMin = toMinutes(timeSlot.endTime);
-
-      for (
-        let start = openMin;
-        start + SLOT_MINUTES <= closeMin;
-        start += SLOT_MINUTES
-      ) {
-        const end = start + SLOT_MINUTES;
-        const isBooked = bookedRanges.some(
-          ([bStart, bEnd]) => start < bEnd && end > bStart,
-        );
-        // 1-1: Prisma trả object đơn "priceRule", không phải mảng "priceRules"
-        const rule = timeSlot.priceRule;
-
-        slots.push({
-          startTime: formatMinutes(start),
-          endTime: formatMinutes(end),
-          status: isBooked ? 'BOOKED' : 'AVAILABLE',
-          price: rule ? Number(rule.price) : 0,
-          priceLabel: timeSlot.label ?? null,
-        });
-      }
+  async getAvailability(fieldId: string, dateStr: string) {
+    const field = await this.findById(fieldId);
+    if (!field) {
+      throw new BadRequestException('Sân không tồn tại');
     }
+    if (field.status !== 'ACTIVE') {
+      throw new BadRequestException('Sân không hoạt động');
+    }
+    const date = new Date(dateStr);
+    const dayOfWeek = date.getUTCDay(); // 0=CN,1=T2,...,6=T7
 
-    return {
-      yardId: yard.id,
-      yardName: yard.name,
-      yardCode: yard.code,
-      type: yard.type,
-      slots,
-    };
-  });
+    const yards = await this.fieldRepository.getAvailability(fieldId, date);
 
-  return { date: dateStr, yards: yardsWithSlots };
-}
+    const rawCutoff = Number(Env.CUTOFF_MINUTES);
+    const cutoffMs = rawCutoff < 10000 ? rawCutoff * 60 * 1000 : rawCutoff;
+    const cutoffTime = new Date(Date.now() + cutoffMs);
+
+    const yardsWithSlots = yards.map((yard: any) => {
+      const bookedRanges: [number, number][] = yard.bookings.map((b: any) => [
+        toMinutes(b.startTime),
+        toMinutes(b.endTime),
+      ]);
+
+      const slots = [];
+      const timeSlots = yard.timeSlots.filter(
+        (slot: any) => slot.dayOfWeek === dayOfWeek,
+      );
+
+      for (const timeSlot of timeSlots) {
+        const openMin = toMinutes(timeSlot.startTime);
+        const closeMin = toMinutes(timeSlot.endTime);
+
+        for (
+          let start = openMin;
+          start + SLOT_MINUTES <= closeMin;
+          start += SLOT_MINUTES
+        ) {
+          const end = start + SLOT_MINUTES;
+          const isBooked = bookedRanges.some(
+            ([bStart, bEnd]) => start < bEnd && end > bStart,
+          );
+
+          const startFormatted = formatMinutes(start);
+          const slotDateTime = new Date(`${dateStr}T${startFormatted}:00+07:00`);
+          const isPastOrCutoff = slotDateTime < cutoffTime;
+
+          // 1-1: Prisma trả object đơn "priceRule", không phải mảng "priceRules"
+          const rule = timeSlot.priceRule;
+
+          slots.push({
+            startTime: startFormatted,
+            endTime: formatMinutes(end),
+            status: isBooked || isPastOrCutoff ? 'BOOKED' : 'AVAILABLE',
+            price: rule ? Number(rule.price) : 0,
+            priceLabel: timeSlot.label ?? null,
+          });
+        }
+      }
+
+      return {
+        yardId: yard.id,
+        yardName: yard.name,
+        yardCode: yard.code,
+        type: yard.type,
+        slots,
+      };
+    });
+
+    return { date: dateStr, yards: yardsWithSlots };
+  }
 
   async findFieldActiveStatus(
     filter: FieldActiveFilter,

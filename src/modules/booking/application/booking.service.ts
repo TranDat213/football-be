@@ -20,9 +20,11 @@ export class BookingService {
     private readonly refundService?: RefundService,
   ) {}
 
- private validateCutoffTime(bookingDate: string, startTime: string) {
-    const bookingStart = new Date(`${bookingDate}T${startTime}:00`);
-    const cutoff = new Date(Date.now() + Number(Env.CUTOFF_MINUTES));
+  private validateCutoffTime(bookingDate: string, startTime: string) {
+    const bookingStart = new Date(`${bookingDate}T${startTime}:00+07:00`);
+    const rawCutoff = Number(Env.CUTOFF_MINUTES || 3600000);
+    const cutoffMs = rawCutoff < 10000 ? rawCutoff * 60 * 1000 : rawCutoff;
+    const cutoff = new Date(Date.now() + cutoffMs);
     if (bookingStart < cutoff) {
       throw new BadRequestException(
         'Chỉ được đặt sân trước giờ bắt đầu ít nhất 1 tiếng, vui lòng chọn khung giờ khác',
