@@ -12,14 +12,14 @@ export class DeleteFootballFieldUseCase {
   async execute(ownerId: string, fieldId: string): Promise<{ message: string }> {
     // ── Pre-flight checks ────────────────────────────────────────────────────
     const field = await this.fieldRepository.findById(fieldId);
-    if (!field) throw new BadRequestException('Field not found');
-    if (field.ownerId !== ownerId) throw new BadRequestException('You do not own this field');
-    if (field.deletedAt) throw new BadRequestException('Field has already been deleted');
+    if (!field) throw new BadRequestException('Không tìm thấy sân bóng.');
+    if (field.ownerId !== ownerId) throw new BadRequestException('Bạn không phải chủ sân này.');
+    if (field.deletedAt) throw new BadRequestException('Sân bóng đã bị xóa trước đó rồi.');
 
     // Field must not be ACTIVE to allow deletion
     if (field.status === FieldStatus.ACTIVE) {
       throw new BadRequestException(
-        'Cannot delete an ACTIVE field. Deactivate it first (set status to INACTIVE).',
+        'Không thể xóa sân đang ACTIVE. Vui lòng vô hiệu hóa trước (chuyển trạng thái sang INACTIVE).',
       );
     }
 
@@ -33,7 +33,7 @@ export class DeleteFootballFieldUseCase {
 
     if (hasBookings) {
       throw new BadRequestException(
-        'Cannot delete field — there are active bookings (PENDING/CONFIRMED) on its yards.',
+        'Không thể xóa sân — có đơn đặt đang hoạt động (PENDING/CONFIRMED) trên các sân con.',
       );
     }
 

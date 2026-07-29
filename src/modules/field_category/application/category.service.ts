@@ -16,7 +16,7 @@ export class CategoryService {
       const slug = normalizeSlug(category.name, Env.MAX_SLUG_LENGTH);
       if (!slug) {
         throw new BadRequestException(
-          'Category name is invalid to generate slug',
+          'Tên danh mục không hợp lệ để tạo slug.',
         );
       }
       return await this.categoryRepository.create(category, slug);
@@ -24,7 +24,7 @@ export class CategoryService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerException('Failed to create category');
+      throw new InternalServerException('Tạo danh mục thất bại.');
     }
   }
 
@@ -42,31 +42,31 @@ export class CategoryService {
       const existingCategory =
         await this.categoryRepository.findById(categoryId);
       if (!existingCategory) {
-        throw new BadRequestException('Category not found');
+        throw new BadRequestException('Không tìm thấy danh mục.');
       }
       return await this.categoryRepository.update(categoryId, category, slug);
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerException('Failed to delete subfield');
+      throw new InternalServerException('Cập nhật danh mục thất bại.');
     }
   }
   async delete(id: string): Promise<FieldCategory> {
     try {
       const existingCategory = await this.categoryRepository.findById(id);
       if (!existingCategory) {
-        throw new BadRequestException('Category not found');
+        throw new BadRequestException('Không tìm thấy danh mục.');
       }
       if (existingCategory.deletedAt) {
-        throw new BadRequestException('Category is deleted');
+        throw new BadRequestException('Danh mục đã bị xóa.');
       }
       return await this.categoryRepository.delete(id);
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerException('Failed to delete subfield');
+      throw new InternalServerException('Xóa danh mục thất bại.');
     }
   }
 

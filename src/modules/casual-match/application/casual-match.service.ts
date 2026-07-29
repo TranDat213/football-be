@@ -366,9 +366,9 @@ export class CasualMatchService implements IExternalIPNHandler {
 
       await this.prisma.$transaction(async (tx) => {
         const participant = await tx.casualMatchParticipant.findUnique({ where: { id: participantId } });
-        if (!participant) throw new Error('Participant not found');
+        if (!participant) throw new Error('Không tìm thấy người tham gia.');
         if (participant.paymentStatus === ParticipantPayStatus.PAID) return;
-        if (Number(participant.totalAmount) !== amount) throw new Error('Amount mismatch');
+        if (Number(participant.totalAmount) !== amount) throw new Error('Số tiền không khớp.');
 
         await tx.casualMatchParticipant.update({
           where: { id: participantId },

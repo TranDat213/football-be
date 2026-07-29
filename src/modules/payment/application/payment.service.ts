@@ -77,7 +77,7 @@ export class PaymentService {
     return await this.transactionManager.run(async (tx) => {
       // 1. Get booking with lock
       const booking = await this.bookingRepository.findByIdWithLock(bookingId, tx);
-      if (!booking) throw new NotFoundException('Booking not found');
+      if (!booking) throw new NotFoundException('Không tìm thấy đơn đặt sân');
 
       // 2. Idempotency guard — if already paid, return early
       if (booking.payment && booking.payment.status === PaymentStatus.PAID) {

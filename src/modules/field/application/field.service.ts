@@ -78,7 +78,7 @@ export class FieldService {
   async findById(fieldId: string): Promise<FootballField> {
     const field = await this.fieldRepository.findById(fieldId);
     if (!field) {
-      throw new BadRequestException('Field not found');
+      throw new BadRequestException('Không tìm thấy sân bóng.');
     }
     return field;
   }
@@ -88,8 +88,8 @@ export class FieldService {
     status: FieldStatus,
   ): Promise<FootballField> {
     const field = await this.fieldRepository.findById(fieldId);
-    if (!field) throw new BadRequestException('Field not found');
-    if (field.deletedAt) throw new BadRequestException('Field is deleted');
+    if (!field) throw new BadRequestException('Không tìm thấy sân bóng.');
+    if (field.deletedAt) throw new BadRequestException('Sân bóng đã bị xóa.');
 
     let updatedField: FootballField;
     if (status === FieldStatus.INACTIVE) {
@@ -121,10 +121,10 @@ export class FieldService {
   ): Promise<{ data: FootballField[]; total: number }> {
     const user = await this.fieldRepository.findOwner(ownerId);
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException('Không tìm thấy người dùng.');
     }
     if (user.role !== UserRole.OWNER) {
-      throw new BadRequestException('User is not owner');
+      throw new BadRequestException('Người dùng không phải là chủ sân.');
     }
     return await this.fieldRepository.findByOwnerId(ownerId, filter);
   }
@@ -150,7 +150,7 @@ export class FieldService {
       FolderType.IMAGES,
     );
     if (!uploadedImage?.secureUrl || !uploadedImage?.publicId) {
-      throw new BadRequestException('Failed to upload image');
+      throw new BadRequestException('Tải ảnh lên thất bại.');
     }
     return { url: uploadedImage.secureUrl, publicId: uploadedImage.publicId };
   }
@@ -159,7 +159,7 @@ export class FieldService {
     const fieldImage =
       await this.fieldRepository.findFieldImageById(fieldImageId);
     if (!fieldImage) {
-      throw new BadRequestException('Field image not found');
+      throw new BadRequestException('Không tìm thấy ảnh sân bóng.');
     }
     return fieldImage;
   }
@@ -171,10 +171,10 @@ export class FieldService {
   ): Promise<FieldImage[]> {
     const field = await this.fieldRepository.findById(fieldId);
     if (!field) {
-      throw new BadRequestException('Field not found');
+      throw new BadRequestException('Không tìm thấy sân bóng.');
     }
     if (field.deletedAt) {
-      throw new BadRequestException('Field is deleted');
+      throw new BadRequestException('Sân bóng đã bị xóa.');
     }
     return await this.fieldRepository.findFieldImagesByFieldId(
       page,

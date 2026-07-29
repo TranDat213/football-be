@@ -13,7 +13,7 @@ class MailService{
             console.log(result);
         } catch (error) {
             console.error("Failed to send OTP:", error);
-            throw new Error("Failed to send OTP");
+            throw new Error("Gửi mã OTP thất bại.");
         }
     }
 }

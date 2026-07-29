@@ -31,7 +31,7 @@ export class UserService {
   async getProfileById(id: string): Promise<User | null> {
     const userProfile = await this.userRepository.getProfileById(id);
     if (!userProfile) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Không tìm thấy người dùng.');
     }
     return userProfile;
   }
@@ -46,14 +46,14 @@ export class UserService {
     let uploadedImage: any = null;
     const userProfile = await this.userRepository.getProfileById(id);
     if (!userProfile) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Không tìm thấy người dùng.');
     }
     if (data.email) {
       const existingUser = await this.userRepository.findProfileByEmail(
         data.email,
       );
       if (existingUser && existingUser.id !== id) {
-        throw new BadRequestException('Email already exists');
+        throw new BadRequestException('Email đã tồn tại.');
       }
     }
     if (data.phone) {
@@ -61,7 +61,7 @@ export class UserService {
         data.phone,
       );
       if (existingUser && existingUser.id !== id) {
-        throw new BadRequestException('Phone already exists');
+        throw new BadRequestException('Số điện thoại đã tồn tại.');
       }
     }
     if (imageFile) {
@@ -72,7 +72,7 @@ export class UserService {
           FolderType.AVATARS,
         );
         if (!uploadedImage?.secureUrl || !uploadedImage?.publicId) {
-          throw new BadRequestException('Failed to upload image');
+          throw new BadRequestException('Tải ảnh lên thất bại.');
         }
         avatarUrl = uploadedImage.secureUrl;
         avatarPublicId = uploadedImage.publicId;
@@ -99,7 +99,7 @@ export class UserService {
       if (data.email) {
         const user = await this.userRepository.findProfileByEmail(data.email);
         if (user) {
-          throw new BadRequestException('Email already exists');
+          throw new BadRequestException('Email đã tồn tại.');
         }
       }
       if (data.email) {
@@ -107,13 +107,13 @@ export class UserService {
           data.email,
         );
         if (user) {
-          throw new BadRequestException('Username already exists');
+          throw new BadRequestException('Tên đăng nhập đã tồn tại.');
         }
       }
       if (data.phone) {
         const user = await this.userRepository.findProfileByPhone(data.phone);
         if (user) {
-          throw new BadRequestException('Phone already exists');
+          throw new BadRequestException('Số điện thoại đã tồn tại.');
         }
       }
 
@@ -130,43 +130,43 @@ export class UserService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerException('Failed to create owner');
+      throw new InternalServerException('Tạo tài khoản chủ sân thất bại.');
     }
   }
 
   async updateRole(data: UpdateRoleDto, user_id: string): Promise<User> {
     try {
       if (!user_id) {
-        throw new BadRequestException('User ID is required');
+        throw new BadRequestException('Thiếu ID người dùng.');
       }
       const user = await this.userRepository.getProfileById(user_id);
       if (!user) {
-        throw new NotFoundException('User not found');
+        throw new NotFoundException('Không tìm thấy người dùng.');
       }
       return await this.userRepository.updateRole(data, user_id);
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerException('Failed to update role');
+      throw new InternalServerException('Cập nhật quyền thất bại.');
     }
   }
 
   async updateStatus(data: UpdateUserStatusDto, user_id: string): Promise<User> {
     try {
       if (!user_id) {
-        throw new BadRequestException('User ID is required');
+        throw new BadRequestException('Thiếu ID người dùng.');
       }
       const user = await this.userRepository.getProfileById(user_id);
       if (!user) {
-        throw new NotFoundException('User not found');
+        throw new NotFoundException('Không tìm thấy người dùng.');
       }
       return await this.userRepository.updateStatus(data, user_id);
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerException('Failed to update status');
+      throw new InternalServerException('Cập nhật trạng thái thất bại.');
     }
   }
 
@@ -178,7 +178,7 @@ export class UserService {
     try {
       // Validate email is provided
       if (!data.email) {
-        throw new BadRequestException('Email is required');
+        throw new BadRequestException('Vui lòng cung cấp email.');
       }
 
       // Check if email already exists
@@ -188,11 +188,11 @@ export class UserService {
       if (data.user_id) {
         const user = await this.userRepository.getProfileById(data.user_id);
         if (!user) {
-          throw new NotFoundException('User not found');
+          throw new NotFoundException('Không tìm thấy người dùng.');
         }
 
         if (user.role === UserRole.OWNER) {
-          throw new BadRequestException('You are already an owner.');
+          throw new BadRequestException('Bạn đã là chủ sân rồi.');
         }
       }
       const registration = await this.userRepository.createOwnerRegister(data);
@@ -213,7 +213,7 @@ export class UserService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerException('Failed to register owner');
+      throw new InternalServerException('Đăng ký chủ sân thất bại.');
     }
   }
 
@@ -224,7 +224,7 @@ export class UserService {
     try {
       return await this.userRepository.getOwnerRegisterPending(limit, page);
     } catch (error) {
-      throw new InternalServerException('Failed to get owner register pending');
+      throw new InternalServerException('Lấy danh sách đăng ký chủ sân đang chờ thất bại.');
     }
   }
 
@@ -232,18 +232,18 @@ export class UserService {
     try {
       return await this.userRepository.countOwnerRegisterPending();
     } catch (error) {
-      throw new InternalServerException('Failed to count owner register pending');
+      throw new InternalServerException('Đếm số đăng ký chủ sân đang chờ thất bại.');
     }
   }
 
   async updateOwnerRegisterStatus(id: string, data: UpdateOwnerRegisterStatusDto): Promise<OwnerRegistration> {
     try {
       if (!id) {
-        throw new BadRequestException('Owner register ID is required');
+        throw new BadRequestException('Thiếu ID phiếu đăng ký chủ sân.');
       }
       const ownerRegister = await this.userRepository.getOwnerRegisterById(id);
       if (!ownerRegister) {
-        throw new NotFoundException('Owner register not found');
+        throw new NotFoundException('Không tìm thấy phiếu đăng ký chủ sân.');
       }
       const result = await this.userRepository.updateOwnerRegisterStatus(id, data);
 
@@ -270,7 +270,7 @@ export class UserService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerException('Failed to update owner register status');
+      throw new InternalServerException('Cập nhật trạng thái phiếu đăng ký chủ sân thất bại.');
     }
   }
 
@@ -278,7 +278,7 @@ export class UserService {
     try {
       return await this.userRepository.getOwnerRegisterById(id);
     } catch (error) {
-      throw new InternalServerException('Failed to get owner register by ID');
+      throw new InternalServerException('Lấy phiếu đăng ký chủ sân thất bại.');
     }
   }
 
@@ -287,7 +287,7 @@ export class UserService {
     try {
       return await this.userRepository.getAllUsers(limit, page, filter);
     } catch (error) {
-      throw new InternalServerException('Failed to get all users');
+      throw new InternalServerException('Lấy danh sách người dùng thất bại.');
     }
   }
 
@@ -295,7 +295,7 @@ export class UserService {
     try {
       return await this.userRepository.getAllOwners(limit, page, filter);
     } catch (error) {
-      throw new InternalServerException('Failed to get all owners');
+      throw new InternalServerException('Lấy danh sách chủ sân thất bại.');
     }
   }
 
@@ -303,7 +303,7 @@ export class UserService {
     try {
       return await this.userRepository.getAllAccounts(limit, page, filter);
     } catch (error) {
-      throw new InternalServerException('Failed to get all accounts');
+      throw new InternalServerException('Lấy danh sách tài khoản thất bại.');
     }
   }
 
@@ -311,7 +311,7 @@ export class UserService {
     try {
       return await this.userRepository.getAccountStatistics();
     } catch (error) {
-      throw new InternalServerException('Failed to get account statistics');
+      throw new InternalServerException('Lấy thống kê tài khoản thất bại.');
     }
   }
 }

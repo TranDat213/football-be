@@ -34,17 +34,17 @@ export class UpdateFootballFieldUseCase {
     // ── Step 1: Pre-flight checks OUTSIDE the transaction ────────────────────
 
     const field = await this.fieldRepository.findById(fieldId);
-    if (!field) throw new BadRequestException('Field not found');
+    if (!field) throw new BadRequestException('Không tìm thấy sân bóng.');
     if (field.ownerId !== ownerId)
-      throw new BadRequestException('You do not own this field');
+      throw new BadRequestException('Bạn không phải chủ sân này.');
     if (field.deletedAt)
-      throw new BadRequestException('Field has been deleted');
+      throw new BadRequestException('Sân bóng đã bị xóa.');
 
     if (dto.categoryId) {
       const category = await this.fieldRepository.findCategoryById(
         dto.categoryId,
       );
-      if (!category) throw new BadRequestException('Category not found');
+      if (!category) throw new BadRequestException('Không tìm thấy danh mục.');
     }
 
     // Slug — only regenerate if name changes
@@ -162,7 +162,7 @@ export class UpdateFootballFieldUseCase {
                   );
                 if (hasBookings) {
                   throw new BadRequestException(
-                    `Cannot remove yard "${existingYard.name}" — it has active bookings (PENDING/CONFIRMED).`,
+                    `Không thể xóa sân con "${existingYard.name}" — sân đang có đơn đặt chờ (PENDING/CONFIRMED).`,
                   );
                 }
                 // Delete price rules → time slots → yard
@@ -196,7 +196,7 @@ export class UpdateFootballFieldUseCase {
                   );
                 if (hasBookings) {
                   throw new BadRequestException(
-                    `Cannot update time slots for yard "${yardDto.name}" — it has active bookings (PENDING/CONFIRMED).`,
+                    `Không thể cập nhật khung giờ của sân con "${yardDto.name}" — sân đang có đơn đặt chờ (PENDING/CONFIRMED).`,
                   );
                 }
 
@@ -330,12 +330,12 @@ export class UpdateFootballFieldUseCase {
 
         if (start >= end) {
           throw new BadRequestException(
-            `yards.${yardIndex}.timeSlots.${slotIndex}.endTime must be after startTime`,
+            `yards.${yardIndex}.timeSlots.${slotIndex}.endTime phải sau startTime`,
           );
         }
         if (start < fieldOpen || end > fieldClose) {
           throw new BadRequestException(
-            `yards.${yardIndex}.timeSlots.${slotIndex} must be inside field openTime/closeTime`,
+            `yards.${yardIndex}.timeSlots.${slotIndex} phải nằm trong khoảng openTime/closeTime của sân`,
           );
         }
 
@@ -345,7 +345,7 @@ export class UpdateFootballFieldUseCase {
         );
         if (overlap) {
           throw new BadRequestException(
-            `yards.${yardIndex}.timeSlots.${slotIndex} overlaps with timeSlots.${overlap.index}`,
+            `yards.${yardIndex}.timeSlots.${slotIndex} bị trùng khớp với timeSlots.${overlap.index}`,
           );
         }
         slots.push({ start, end, index: slotIndex });

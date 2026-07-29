@@ -510,7 +510,7 @@ export class PrismaBookingRepository implements IBookingRepository {
         include: { payment: true, user: true, fieldYard: { include: { footballField: true } } },
       });
 
-      if (!booking) throw new Error('Booking not found');
+      if (!booking) throw new Error('Không tìm thấy đơn đặt sân');
 
       // Mark payment as REFUND_PENDING if paid
       if (isPaid && booking.payment) {

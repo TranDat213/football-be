@@ -7,7 +7,7 @@ export class PriceRuleService {
 
    async getById(id: string): Promise<FieldPriceRule> {
     const existing = await this.priceRuleRepository.findById(id);
-    if (!existing) throw new BadRequestException('Price rule not found');
+    if (!existing) throw new BadRequestException('Không tìm thấy quy tắc giá.');
     return existing;
   }
 
