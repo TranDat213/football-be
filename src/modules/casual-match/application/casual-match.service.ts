@@ -522,10 +522,6 @@ export class CasualMatchService implements IExternalIPNHandler {
     const match = await this.repo.findWithBooking(matchId);
     if (!match) throw new NotFoundException('Casual Match không tồn tại');
 
-    const isHost = match.hostId === requesterId;
-    const isOwner = match.booking?.fieldYard?.footballField?.ownerId === requesterId;
-    if (!isHost && !isOwner) throw new ForbiddenException('Chỉ host hoặc chủ sân mới được xem');
-
     const participants = await this.repo.findParticipantsByMatchId(matchId);
     return { match, participants };
   }

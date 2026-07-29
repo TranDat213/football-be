@@ -36,7 +36,12 @@ QUY TẮC GỌI FUNCTION TOOL VÀ NGUYÊN TẮC KHÔNG HỎI LẠI (CỰC KỲ Q
 
 QUY TẮC TRẢ LỜI:
 - Nếu Tool trả về dữ liệu có cấu trúc: Chỉ tóm tắt kết quả bằng ngôn ngữ tự nhiên, thân thiện, ngắn gọn và sử dụng Markdown. Không lặp lại toàn bộ JSON thô. Không tự tạo URL hoặc route (Frontend sẽ tự hiển thị giao diện card/button dựa vào metadata).
-- Không tự suy đoán hay bịa đặt dữ liệu realtime nếu không gọi tool.`;
+- Không tự suy đoán hay bịa đặt dữ liệu realtime nếu không gọi tool.
+
+QUY TẮC XỬ LÝ KHI KHÔNG CÓ KẾT QUẢ ĐÚNG YÊU CẦU:
+1. Nếu tool trả về items rỗng hoàn toàn: báo không tìm thấy, đồng thời chủ động đề xuất 1 hướng cụ thể tiếp theo (ví dụ quận lân cận có sân trong hệ thống), không hỏi chung chung.
+2. Nếu items có phần tử với matchedRequestedTime: false: BẮT BUỘC liệt kê ngay các giờ trống lấy từ availableSlots của từng sân đó TRONG CÙNG câu trả lời. Không được hỏi lại "bạn muốn giờ khác không" mà không kèm gợi ý giờ cụ thể.
+3. Chỉ được hỏi lại người dùng khi items rỗng và không còn tham số nào để mở rộng tìm kiếm (không còn quận/loại sân nào khác để gợi ý).`;
 
 function getCurrentDateContext(): string {
   const now = new Date();
@@ -48,34 +53,31 @@ function getCurrentDateContext(): string {
     weekday: 'long',
   });
   const parts = formatter.formatToParts(now);
-  const year = parts.find((p) => p.type === 'year')?.value;
-  const month = parts.find((p) => p.type === 'month')?.value;
-  const day = parts.find((p) => p.type === 'day')?.value;
+  const year = Number(parts.find((p) => p.type === 'year')?.value);
+  const month = Number(parts.find((p) => p.type === 'month')?.value);
+  const day = Number(parts.find((p) => p.type === 'day')?.value);
   const weekday = parts.find((p) => p.type === 'weekday')?.value;
 
-  const currentDate = `${year}-${month}-${day}`;
 
-  const dToday = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+  const anchor = new Date(Date.UTC(year, month -1, day));
+  const fmt = (d: Date) => d.toISOString().split('T')[0];
+ 
+  const tomorrow = new Date(anchor);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
 
-  const dTomorrow = new Date(dToday);
-  dTomorrow.setDate(dTomorrow.getDate() + 1);
-  const dateTomorrow = dTomorrow.toISOString().split('T')[0];
+  const dayAfterTomorrow = new Date(anchor);
+  dayAfterTomorrow.setUTCDate(dayAfterTomorrow.getUTCDate() + 2);
 
-  const dDayAfterTomorrow = new Date(dToday);
-  dDayAfterTomorrow.setDate(dDayAfterTomorrow.getDate() + 2);
-  const dateDayAfterTomorrow = dDayAfterTomorrow.toISOString().split('T')[0];
-
-  const dayOfWeek = dToday.getDay(); // 0 = Sunday, 6 = Saturday
+  const dayOfWeek = anchor.getUTCDay(); // 0 = Sunday, 6 = Saturday
   const daysUntilSaturday = (6 - dayOfWeek + 7) % 7;
-  const dWeekend = new Date(dToday);
-  dWeekend.setDate(dWeekend.getDate() + (daysUntilSaturday === 0 ? 0 : daysUntilSaturday));
-  const dateWeekend = dWeekend.toISOString().split('T')[0];
+  const weekend = new Date(anchor);
+  weekend.setUTCDate(weekend.getUTCDate() + daysUntilSaturday);
 
-  return `\n\nTHÔNG TIN THỜI GIAN HỆ THỐNG HIỆN TẠI (GMT+7):
-- Current date (hôm nay / tối nay): ${currentDate} (${weekday})
-- Ngày mai (current_date + 1): ${dateTomorrow}
-- Mốt (current_date + 2): ${dateDayAfterTomorrow}
-- Cuối tuần (Thứ 7 gần nhất): ${dateWeekend}`;
+return `\n\nTHÔNG TIN THỜI GIAN HỆ THỐNG HIỆN TẠI (GMT+7):
+- Current date (hôm nay / tối nay): ${fmt(anchor)} (${weekday})
+- Ngày mai (current_date + 1): ${fmt(tomorrow)}
+- Mốt (current_date + 2): ${fmt(dayAfterTomorrow)}
+- Cuối tuần (Thứ 7 gần nhất): ${fmt(weekend)}`;
 }
 
 async function getAvailableLocationsContext(): Promise<string> {
