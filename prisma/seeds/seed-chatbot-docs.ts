@@ -25,13 +25,13 @@ const DOCUMENTS: { title: string; content: string; category: string }[] = [
   {
     category: 'faq',
     title: 'Làm thế nào để đặt sân bóng?',
-    content: `Để đặt sân bóng trên hệ thống Football Hub, bạn thực hiện theo các bước sau:
+    content: `Để đặt sân bóng trên hệ thống ChanDenClub, bạn thực hiện theo các bước sau:
 1. Đăng nhập vào tài khoản (hoặc đăng ký nếu chưa có).
-2. Vào trang "Tìm sân", nhập khu vực, loại sân (5 người / 7 người / 11 người) và thời gian mong muốn.
+2. Vào trang "Tìm sân", nhập khu vực, loại sân  và thời gian mong muốn.
 3. Chọn sân phù hợp từ danh sách kết quả.
 4. Chọn ngày và khung giờ trống.
 5. Xác nhận thông tin đặt sân và tiến hành thanh toán.
-6. Sau khi thanh toán thành công, bạn sẽ nhận email xác nhận booking.`,
+6. Sau khi thanh toán thành công, bạn sẽ nhận thông báo xác nhận booking.`,
   },
   {
     category: 'faq',
@@ -42,9 +42,9 @@ const DOCUMENTS: { title: string; content: string; category: string }[] = [
     category: 'faq',
     title: 'Sân 5 người, 7 người, 11 người khác nhau như thế nào?',
     content: `Hệ thống hỗ trợ 3 loại sân:
-- Sân 5 người (5-a-side): Diện tích nhỏ, phù hợp nhóm bạn nhỏ hoặc luyện tập kỹ thuật. Giá thường từ 150.000 - 300.000 VNĐ/giờ.
-- Sân 7 người (7-a-side): Kích thước trung bình, phổ biến nhất. Giá thường từ 250.000 - 500.000 VNĐ/giờ.
-- Sân 11 người (11-a-side): Sân tiêu chuẩn, phù hợp thi đấu chính thức. Giá thường từ 500.000 - 1.500.000 VNĐ/giờ.
+- Sân 5 người: Diện tích nhỏ, phù hợp nhóm bạn nhỏ hoặc luyện tập kỹ thuật. Giá thường từ 150.000 - 300.000 VNĐ/giờ.
+- Sân 7 người : Kích thước trung bình, phổ biến nhất. Giá thường từ 250.000 - 500.000 VNĐ/giờ.
+- Sân 11 người: Sân tiêu chuẩn, phù hợp thi đấu chính thức. Giá thường từ 500.000 - 1.500.000 VNĐ/giờ.
 Khi tìm sân, bạn có thể lọc theo loại sân mong muốn.`,
   },
   {

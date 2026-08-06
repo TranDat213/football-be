@@ -335,7 +335,7 @@ export class UpdateFootballFieldUseCase {
         }
         if (start < fieldOpen || end > fieldClose) {
           throw new BadRequestException(
-            `yards.${yardIndex}.timeSlots.${slotIndex} phải nằm trong khoảng openTime/closeTime của sân`,
+            `yards.${yardIndex}.timeSlots.${slotIndex} phải nằm trong khoảng giờ mở cửa và đóng cửa của sân`,
           );
         }
 
