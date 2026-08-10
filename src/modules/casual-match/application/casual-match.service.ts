@@ -366,9 +366,9 @@ export class CasualMatchService implements IExternalIPNHandler {
 
       await this.prisma.$transaction(async (tx) => {
         const participant = await tx.casualMatchParticipant.findUnique({ where: { id: participantId } });
-        if (!participant) throw new Error('Participant not found');
+        if (!participant) throw new Error('Không tìm thấy người tham gia.');
         if (participant.paymentStatus === ParticipantPayStatus.PAID) return;
-        if (Number(participant.totalAmount) !== amount) throw new Error('Amount mismatch');
+        if (Number(participant.totalAmount) !== amount) throw new Error('Số tiền không khớp.');
 
         await tx.casualMatchParticipant.update({
           where: { id: participantId },
@@ -521,10 +521,6 @@ export class CasualMatchService implements IExternalIPNHandler {
   async getMatchParticipants(matchId: string, requesterId: string) {
     const match = await this.repo.findWithBooking(matchId);
     if (!match) throw new NotFoundException('Casual Match không tồn tại');
-
-    const isHost = match.hostId === requesterId;
-    const isOwner = match.booking?.fieldYard?.footballField?.ownerId === requesterId;
-    if (!isHost && !isOwner) throw new ForbiddenException('Chỉ host hoặc chủ sân mới được xem');
 
     const participants = await this.repo.findParticipantsByMatchId(matchId);
     return { match, participants };

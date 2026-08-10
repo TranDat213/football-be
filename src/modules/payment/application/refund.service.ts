@@ -15,7 +15,7 @@ export class RefundService {
         include: { payment: true, refund: true },
       });
 
-      if (!booking) throw new NotFoundException('Booking not found');
+      if (!booking) throw new NotFoundException('Không tìm thấy đơn đặt sân');
 
       if (booking.paymentStatus !== PaymentStatus.PAID) {
         // Booking was not paid — no refund needed
@@ -53,10 +53,10 @@ export class RefundService {
     return await this.prisma.$transaction(async (tx) => {
       const refund = await tx.refund.findUnique({ where: { id: refundId } });
 
-      if (!refund) throw new NotFoundException('Refund record not found');
+      if (!refund) throw new NotFoundException('Không tìm thấy yêu cầu hoàn tiền');
 
       if (refund.status !== RefundStatus.PENDING) {
-        throw new BadRequestException('Refund đã được xử lý trước đó');
+        throw new BadRequestException('Yêu cầu hoàn tiền đã được xử lý trước đó');
       }
 
       const updatedRefund = await tx.refund.update({

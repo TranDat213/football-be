@@ -44,17 +44,17 @@ export class AuthService {
           data.user_name,
         );
         if (user) {
-          throw new BadRequestException('Username already exists');
+          throw new BadRequestException('Tên đăng nhập đã tồn tại.');
         }
       }
       if (data.email) {
         const user = await this.authRepository.findUserByEmail(data.email);
         if (user) {
-          throw new BadRequestException('Email already exists');
+          throw new BadRequestException('Email đã tồn tại.');
         }
       }
       if (data.password !== data.confirmPassword) {
-        throw new BadRequestException('Passwords do not match');
+        throw new BadRequestException('Mật khẩu xác nhận không khớp.');
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -70,14 +70,14 @@ export class AuthService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerException('Failed to sign up');
+      throw new InternalServerException('Đăng ký tài khoản thất bại.');
     }
   }
 
   async signIn(data: SignInDto): Promise<User | null> {
     try {
       if (!data.email && !data.user_name) {
-        throw new BadRequestException('Email or username is required');
+        throw new BadRequestException('Vui lòng cung cấp email hoặc tên đăng nhập.');
       }
       if (data.email && !data.user_name) {
         data.user_name = data.email;
@@ -89,11 +89,11 @@ export class AuthService {
         user = await this.authRepository.findUserByUsername(data.user_name!);
       }
       if (!user) {
-        throw new NotFoundException('User not found');
+        throw new NotFoundException('Không tìm thấy người dùng.');
       }
 
       if (!user.password) {
-        throw new BadRequestException('User has no password');
+        throw new BadRequestException('Tài khoản này không có mật khẩu.');
       }
 
       const isPasswordValid = await bcrypt.compare(
@@ -102,7 +102,7 @@ export class AuthService {
       );
 
       if (!isPasswordValid) {
-        throw new BadRequestException('Invalid password');
+        throw new BadRequestException('Mật khẩu không đúng.');
       }
 
       return user;
@@ -110,14 +110,14 @@ export class AuthService {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      throw new InternalServerException('Failed to login');
+      throw new InternalServerException('Đăng nhập thất bại.');
     }
   }
 
   async forgotPassword(data: ForgotPasswordDto): Promise<User> {
     try {
       if (!data.email && !data.user_name) {
-        throw new BadRequestException('Email or username is required');
+        throw new BadRequestException('Vui lòng cung cấp email hoặc tên đăng nhập.');
       }
       let user: User | null = null;
       if (data.email) {
@@ -126,15 +126,15 @@ export class AuthService {
         user = await this.authRepository.findUserByUsername(data.user_name!);
       }
       if (!user) {
-        throw new NotFoundException('User not found');
+        throw new NotFoundException('Không tìm thấy người dùng.');
       }
 
       if (!user.password) {
-        throw new BadRequestException('User has no password');
+        throw new BadRequestException('Tài khoản này không có mật khẩu.');
       }
 
       if (data.password !== data.confirmPassword) {
-        throw new BadRequestException('Passwords do not match');
+        throw new BadRequestException('Mật khẩu xác nhận không khớp.');
       }
 
       const hashedPassword = await bcrypt.hash(data.password, 10);
@@ -146,7 +146,7 @@ export class AuthService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerException('Failed to forgot password');
+      throw new InternalServerException('Đặt lại mật khẩu thất bại.');
     }
   }
 
@@ -163,7 +163,7 @@ export class AuthService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerException('Failed to sign in by provider');
+      throw new InternalServerException('Đăng nhập bằng nhà cung cấp thất bại.');
     }
   }
 
@@ -175,18 +175,18 @@ export class AuthService {
 
       if (purpose === 'SIGN_UP') {
         if (existingUser) {
-          throw new BadRequestException('Email already exists');
+          throw new BadRequestException('Email đã tồn tại.');
         }
         const { first_name, last_name, user_name, password, confirmPassword } =
           data;
         if (!password || password !== confirmPassword) {
-          throw new BadRequestException('Passwords do not match');
+          throw new BadRequestException('Mật khẩu xác nhận không khớp.');
         }
         if (user_name) {
           const existingUsername =
             await this.authRepository.findUserByUsername(user_name);
           if (existingUsername) {
-            throw new BadRequestException('Username already exists');
+            throw new BadRequestException('Tên đăng nhập đã tồn tại.');
           }
         }
         pendingSignUp = {
@@ -199,7 +199,7 @@ export class AuthService {
       } else {
         // RESET_PASSWORD
         if (!existingUser) {
-          throw new NotFoundException('Email not found');
+          throw new NotFoundException('Email không tồn tại.');
         }
       }
       const otpData = this.otpStore.get(email);
@@ -208,7 +208,7 @@ export class AuthService {
         const cooldown = parseInt(process.env.OTP_COOLDOWN || '60000');
         if (now - otpData.lastSentAt < cooldown) {
           throw new BadRequestException(
-            'Please wait before requesting another OTP.',
+            'Vui lòng chờ trước khi yêu cầu mã OTP mới.',
           );
         }
       }
@@ -231,7 +231,7 @@ export class AuthService {
         throw error;
       }
       console.error(error);
-      throw new InternalServerException('Failed to send OTP');
+      throw new InternalServerException('Gửi mã OTP thất bại.');
     }
   }
 
@@ -241,30 +241,30 @@ export class AuthService {
     try {
       const otpData = this.otpStore.get(data.email);
       if (!otpData) {
-        throw new BadRequestException('OTP is not found or expired');
+        throw new BadRequestException('Mã OTP không tồn tại hoặc đã hết hạn.');
       }
       if (otpData.purpose !== data.purpose) {
-        throw new BadRequestException('OTP purpose mismatch');
+        throw new BadRequestException('Mã OTP không đúng mục đích sử dụng.');
       }
       const isOtpValid = await bcrypt.compare(data.otp, otpData.otpHash);
       if (!isOtpValid) {
         otpData.attempts++;
         if (otpData.attempts >= 5) {
           this.otpStore.delete(data.email);
-          throw new BadRequestException('Too many attempts');
+          throw new BadRequestException('Quá nhiều lần thử. Vui lòng yêu cầu mã OTP mới.');
         }
         throw new BadRequestException(
-          'OTP is incorrect remaining attempts: ' + (5 - otpData.attempts),
+          'Mã OTP không đúng. Số lần thử còn lại: ' + (5 - otpData.attempts),
         );
       }
       if (otpData.expiresAt < Date.now()) {
         this.otpStore.delete(data.email);
-        throw new BadRequestException('OTP is expired');
+        throw new BadRequestException('Mã OTP đã hết hạn.');
       }
 
       if (otpData.purpose === 'SIGN_UP') {
         if (!otpData.pendingSignUp) {
-          throw new InternalServerException('No pending registration found');
+          throw new InternalServerException('Không tìm thấy thông tin đăng ký đang chờ xử lý.');
         }
         const user = await this.authRepository.createUser({
           first_name: otpData.pendingSignUp.first_name,
@@ -295,7 +295,7 @@ export class AuthService {
       ) {
         throw error;
       }
-      throw new InternalServerException('Failed to verify OTP');
+      throw new InternalServerException('Xác thực mã OTP thất bại.');
     }
   }
 
@@ -305,7 +305,7 @@ export class AuthService {
         userId: string;
       };
     } catch (error) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      throw new UnauthorizedException('Token làm mới không hợp lệ hoặc đã hết hạn.');
     }
   }
 }

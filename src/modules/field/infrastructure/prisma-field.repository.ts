@@ -140,6 +140,15 @@ export class PrismaFieldRepository implements IFieldRepository {
             sortOrder: 'asc',
           },
         },
+        owner: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+            email: true,
+          },
+        },
       },
     });
   }

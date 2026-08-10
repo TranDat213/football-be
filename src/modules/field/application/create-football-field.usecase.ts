@@ -43,12 +43,12 @@ export class CreateFootballFieldUseCase {
     // ── Step 1: Pre-flight checks OUTSIDE the transaction ────────────────────
     const owner = await this.fieldRepository.findOwner(ownerId);
     if (!owner) {
-      throw new BadRequestException('Owner not found');
+      throw new BadRequestException('Không tìm thấy chủ sân.');
     }
 
     const category = await this.fieldRepository.findCategoryById(dto.categoryId);
     if (!category) {
-      throw new BadRequestException('Category not found');
+      throw new BadRequestException('Không tìm thấy danh mục.');
     }
 
     const slug = await this.fieldService.generateUniqueSlug(dto.name);
@@ -181,17 +181,17 @@ export class CreateFootballFieldUseCase {
         const end = toMinute(slot.endTime);
 
         if (start >= end) {
-          throw new BadRequestException(`yards.${yardIndex}.timeSlots.${slotIndex}.endTime must be after startTime`);
+          throw new BadRequestException(`yards.${yardIndex}.timeSlots.${slotIndex}.endTime phải sau startTime`);
         }
         if (start < fieldOpen || end > fieldClose) {
-          throw new BadRequestException(`yards.${yardIndex}.timeSlots.${slotIndex} must be inside field openTime/closeTime`);
+          throw new BadRequestException(`yards.${yardIndex}.timeSlots.${slotIndex} phải nằm trong khoảng openTime/closeTime của sân`);
         }
 
         const slots = byDay.get(slot.dayOfWeek) ?? [];
         const overlap = slots.find((item) => item.start < end && item.end > start);
         if (overlap) {
           throw new BadRequestException(
-            `yards.${yardIndex}.timeSlots.${slotIndex} overlaps with timeSlots.${overlap.index}`,
+            `yards.${yardIndex}.timeSlots.${slotIndex} bị trùng khọp với timeSlots.${overlap.index}`,
           );
         }
         slots.push({ start, end, index: slotIndex });

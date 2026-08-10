@@ -18,9 +18,10 @@ export class CreateBookingDto {
   @Matches(/^([01]\d|2[0-3]):?([0-5]\d)$/, { message: 'Giờ kết thúc phải theo định dạng HH:mm' })
   endTime!: string;     // HH:mm
 
-  @IsNotEmpty({ message: 'Vui lòng chọn phương thức thanh toán' })
+  // Chỉ hỗ trợ VNPAY — CASH chuyển sang createOfflineBooking
+  @IsOptional()
   @IsEnum(PaymentMethod, { message: 'Phương thức thanh toán không hợp lệ' })
-  paymentMethod!: PaymentMethod; // CASH => trả sau, không hết hạn | MOMO/VNPAY/BANK_TRANSFER => giữ chỗ tạm, có TTL
+  paymentMethod?: PaymentMethod;
 
   @IsOptional()
   @IsString()
@@ -40,6 +41,7 @@ export class CreateOfflineBookingDto {
   @Matches(/^([01]\d|2[0-3]):?([0-5]\d)$/, { message: 'Giờ kết thúc phải theo định dạng HH:mm' })
   endTime!: string;
 
+  // Dùng khi chủ sân tạo offline thay khách
   @IsOptional()
   @IsString()
   customerName?: string;
@@ -47,5 +49,9 @@ export class CreateOfflineBookingDto {
   @IsOptional()
   @IsString()
   customerPhone?: string;
-}
 
+  // Ghi chú từ user khi chọn "Tiền mặt tại sân"
+  @IsOptional()
+  @IsString()
+  note?: string;
+}

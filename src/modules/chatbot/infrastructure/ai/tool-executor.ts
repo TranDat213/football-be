@@ -19,6 +19,8 @@ export class ToolExecutor {
             fieldType: {
               type: 'string',
               enum: ['FIVE_A_SIDE', 'SEVEN_A_SIDE', 'ELEVEN_A_SIDE'],
+              description:
+                'Loại sân: FIVE_A_SIDE (sân 5), SEVEN_A_SIDE (sân 7), ELEVEN_A_SIDE (sân 11)',
             },
             maxPrice: { type: 'number', description: 'Mức giá tối đa' },
           },
@@ -89,16 +91,29 @@ export class ToolExecutor {
       function: {
         name: 'searchFieldsByTimeSlot',
         description:
-          'Tìm kiếm các sân và khung giờ còn trống trong ngày cụ thể',
+          'Tìm kiếm các sân và khung giờ còn trống trong ngày cụ thể, có thể lọc theo khung giờ chơi mong muốn',
         parameters: {
           type: 'object',
           properties: {
             date: {
               type: 'string',
-              description:
-                'Ngày muốn chơi sân, định dạng YYYY-MM-DD (vd: 2026-07-15)',
+              description: 'Ngày muốn chơi sân, định dạng YYYY-MM-DD',
             },
-            district: { type: 'string', description: 'Tên quận/huyện cần tìm' },
+            time: {
+              type: 'string',
+              description:
+                'Khung giờ chơi mong muốn, định dạng HH:mm (vd 19:00). Nếu người dùng có đề cập giờ chơi cụ thể (vd "7 giờ tối") thì BẮT BUỘC truyền vào đây.',
+            },
+            district: {
+              type: 'string',
+              description: 'Tên quận/huyện cần tìm, vd: Quận 7',
+            },
+            fieldType: {
+              type: 'string',
+              enum: ['FIVE_A_SIDE', 'SEVEN_A_SIDE', 'ELEVEN_A_SIDE'],
+              description:
+                'Loại sân: FIVE_A_SIDE (sân 5), SEVEN_A_SIDE (sân 7), ELEVEN_A_SIDE (sân 11)',
+            },
           },
           required: ['date'],
         },
@@ -111,12 +126,13 @@ export class ToolExecutor {
     args: any,
     userId?: string,
   ): Promise<any> {
-    const formatTime = (date: Date): string => {
-      const d = new Date(date);
-      const hours = String(d.getHours()).padStart(2, '0');
-      const minutes = String(d.getMinutes()).padStart(2, '0');
-      return `${hours}:${minutes}`;
-    };
+    const formatTime = (date: Date): string =>
+      new Intl.DateTimeFormat('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      }).format(new Date(date));
 
     try {
       //tìm các sân bóng theo khu vực
@@ -370,6 +386,7 @@ export class ToolExecutor {
       // tìm sân theo khung giờ
       if (name === 'searchFieldsByTimeSlot') {
         const targetDate = new Date(args.date);
+        const requestedTime: string | undefined = args.time;
 
         const fields = await prisma.footballField.findMany({
           where: {
@@ -409,34 +426,31 @@ export class ToolExecutor {
 
         const items = fields
           .map((field) => {
-            const availableYards = field.yards
-              .map((yard) => {
-                const bookedTimes = yard.bookings.map((b) =>
-                  formatTime(b.startTime),
-                );
+            const yardsWithFreeSlots = field.yards.map((yard) => {
+              const bookedTimes = yard.bookings.map((b) =>
+                formatTime(b.startTime),
+              );
+              const freeSlots = yard.timeSlots
+                .filter(
+                  (slot) => !bookedTimes.includes(formatTime(slot.startTime)),
+                )
+                .map((slot) => formatTime(slot.startTime));
+              return freeSlots;
+            });
 
-                const freeSlots = yard.timeSlots.filter((slot) => {
-                  const slotStart = formatTime(slot.startTime);
-                  return !bookedTimes.includes(slotStart);
-                });
+            const allFreeSlots = Array.from(
+              new Set(yardsWithFreeSlots.flat()),
+            ).sort();
 
-                return {
-                  yardId: yard.id,
-                  freeSlotsCount: freeSlots.length,
-                };
-              })
-              .filter((y) => y.freeSlotsCount > 0);
+            // Sân full hoàn toàn -> loại khỏi kết quả
+            if (allFreeSlots.length === 0) return null;
 
-            if (availableYards.length === 0) return null;
-
-            let minPrice: number | undefined = undefined;
+            let minPrice: number | undefined;
             for (const yard of field.yards) {
               for (const slot of yard.timeSlots) {
                 if (slot.priceRule) {
-                  const priceVal = Number(slot.priceRule.price);
-                  if (minPrice === undefined || priceVal < minPrice) {
-                    minPrice = priceVal;
-                  }
+                  const p = Number(slot.priceRule.price);
+                  if (minPrice === undefined || p < minPrice) minPrice = p;
                 }
               }
             }
@@ -448,21 +462,17 @@ export class ToolExecutor {
               district: field.district,
               image: field.images?.[0]?.url,
               minPrice,
+              availableSlots: allFreeSlots,
+              // ponytail: matchedRequestedTime cho phép AI biết có đúng giờ user hỏi không
+              ...(requestedTime !== undefined && {
+                matchedRequestedTime: allFreeSlots.includes(requestedTime),
+              }),
             };
           })
           .filter((f): f is NonNullable<typeof f> => f !== null);
 
-        return {
-          type: 'football_fields',
-          items,
-        };
+        return { type: 'football_fields', items };
       }
-
-      return {
-        type: 'error',
-        items: [],
-        error: `Tool ${name} not implemented`,
-      };
     } catch (err: any) {
       return { type: 'error', items: [], error: err.message };
     }

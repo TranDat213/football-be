@@ -25,13 +25,13 @@ const DOCUMENTS: { title: string; content: string; category: string }[] = [
   {
     category: 'faq',
     title: 'Làm thế nào để đặt sân bóng?',
-    content: `Để đặt sân bóng trên hệ thống Football Hub, bạn thực hiện theo các bước sau:
+    content: `Để đặt sân bóng trên hệ thống ChanDenClub, bạn thực hiện theo các bước sau:
 1. Đăng nhập vào tài khoản (hoặc đăng ký nếu chưa có).
-2. Vào trang "Tìm sân", nhập khu vực, loại sân (5 người / 7 người / 11 người) và thời gian mong muốn.
+2. Vào trang "Tìm sân", nhập khu vực, loại sân  và thời gian mong muốn.
 3. Chọn sân phù hợp từ danh sách kết quả.
 4. Chọn ngày và khung giờ trống.
 5. Xác nhận thông tin đặt sân và tiến hành thanh toán.
-6. Sau khi thanh toán thành công, bạn sẽ nhận email xác nhận booking.`,
+6. Sau khi thanh toán thành công, bạn sẽ nhận thông báo xác nhận booking.`,
   },
   {
     category: 'faq',
@@ -42,9 +42,9 @@ const DOCUMENTS: { title: string; content: string; category: string }[] = [
     category: 'faq',
     title: 'Sân 5 người, 7 người, 11 người khác nhau như thế nào?',
     content: `Hệ thống hỗ trợ 3 loại sân:
-- Sân 5 người (5-a-side): Diện tích nhỏ, phù hợp nhóm bạn nhỏ hoặc luyện tập kỹ thuật. Giá thường từ 150.000 - 300.000 VNĐ/giờ.
-- Sân 7 người (7-a-side): Kích thước trung bình, phổ biến nhất. Giá thường từ 250.000 - 500.000 VNĐ/giờ.
-- Sân 11 người (11-a-side): Sân tiêu chuẩn, phù hợp thi đấu chính thức. Giá thường từ 500.000 - 1.500.000 VNĐ/giờ.
+- Sân 5 người: Diện tích nhỏ, phù hợp nhóm bạn nhỏ hoặc luyện tập kỹ thuật. Giá thường từ 150.000 - 300.000 VNĐ/giờ.
+- Sân 7 người : Kích thước trung bình, phổ biến nhất. Giá thường từ 250.000 - 500.000 VNĐ/giờ.
+- Sân 11 người: Sân tiêu chuẩn, phù hợp thi đấu chính thức. Giá thường từ 500.000 - 1.500.000 VNĐ/giờ.
 Khi tìm sân, bạn có thể lọc theo loại sân mong muốn.`,
   },
   {
@@ -96,7 +96,7 @@ Link đặt lại mật khẩu có hiệu lực trong 24 giờ.`,
   {
     category: 'policy',
     title: 'Chính sách hủy đặt sân',
-    content: `Chính sách hủy đặt sân của Football Hub:
+    content: `Chính sách hủy đặt sân của ChanDenClub:
 - Hủy trước 24 giờ so với giờ chơi: Hoàn tiền 100%.
 - Hủy trong vòng 12-24 giờ trước giờ chơi: Hoàn tiền 50%.
 - Hủy trong vòng dưới 12 giờ trước giờ chơi: Không hoàn tiền.
@@ -122,17 +122,17 @@ Khuyến nghị hủy sớm (trước 24 giờ) để được hoàn tiền 100%
   {
     category: 'policy',
     title: 'Điều khoản sử dụng dịch vụ',
-    content: `Khi sử dụng Football Hub, người dùng đồng ý với các điều khoản sau:
+    content: `Khi sử dụng ChanDenClub, người dùng đồng ý với các điều khoản sau:
 - Cung cấp thông tin chính xác khi đăng ký và đặt sân.
 - Không sử dụng tài khoản với mục đích gian lận, tạo booking ảo.
 - Tôn trọng quy định của từng sân bóng (giờ chơi, hành vi trong sân).
-- Football Hub có quyền khóa tài khoản vi phạm mà không cần thông báo trước.
+- ChanDenClub có quyền khóa tài khoản vi phạm mà không cần thông báo trước.
 - Mọi tranh chấp liên quan đến chất lượng sân cần phản ánh trong vòng 24 giờ sau khi chơi.`,
   },
   {
     category: 'policy',
     title: 'Chính sách bảo mật thông tin',
-    content: `Football Hub cam kết bảo vệ thông tin cá nhân của người dùng:
+    content: `ChanDenClub cam kết bảo vệ thông tin cá nhân của người dùng:
 - Thông tin cá nhân (tên, email, số điện thoại) chỉ dùng cho mục đích đặt sân và liên lạc.
 - Không chia sẻ thông tin cho bên thứ ba ngoài mục đích vận hành dịch vụ (ngân hàng, cổng thanh toán).
 - Người dùng có quyền yêu cầu xóa tài khoản và dữ liệu bất cứ lúc nào.
@@ -145,18 +145,18 @@ Khuyến nghị hủy sớm (trước 24 giờ) để được hoàn tiền 100%
   {
     category: 'guide',
     title: 'Hướng dẫn đăng ký tài khoản',
-    content: `Để đăng ký tài khoản Football Hub:
-1. Truy cập trang web hoặc mở app Football Hub.
+    content: `Để đăng ký tài khoản ChanDenClub:
+1. Truy cập trang web hoặc mở app ChanDenClub.
 2. Nhấn "Đăng ký".
 3. Điền thông tin: Họ tên, email, số điện thoại, mật khẩu.
 4. Xác nhận email (kiểm tra hộp thư).
 5. Đăng nhập và bắt đầu sử dụng.
-Bạn cũng có thể đăng nhập nhanh bằng tài khoản Google hoặc Facebook.`,
+Bạn cũng có thể đăng nhập nhanh bằng tài khoản Google.`,
   },
   {
     category: 'guide',
     title: 'Hướng dẫn tìm kiếm sân bóng',
-    content: `Có nhiều cách tìm sân trên Football Hub:
+    content: `Có nhiều cách tìm sân trên ChanDenClub:
 - Tìm theo khu vực: Nhập tỉnh/thành phố và quận/huyện vào ô tìm kiếm.
 - Tìm theo loại sân: Lọc sân 5, 7 hoặc 11 người.
 - Tìm theo giá: Thiết lập khoảng giá phù hợp với ngân sách.
@@ -166,7 +166,7 @@ Bạn cũng có thể đăng nhập nhanh bằng tài khoản Google hoặc Face
   {
     category: 'guide',
     title: 'Hướng dẫn thanh toán đặt sân',
-    content: `Football Hub hỗ trợ thanh toán qua VNPay (ATM, Visa, Mastercard, ví điện tử). Quy trình:
+    content: `ChanDenClub hỗ trợ thanh toán qua VNPay . Quy trình:
 1. Sau khi chọn sân và khung giờ, nhấn "Đặt sân".
 2. Kiểm tra thông tin booking.
 3. Nhấn "Thanh toán" → Chọn phương thức thanh toán.
@@ -176,14 +176,14 @@ Lưu ý: Hoàn tất thanh toán trong vòng 15 phút sau khi tạo booking, n�
   },
   {
     category: 'guide',
-    title: 'Cách đăng ký trở thành chủ sân trên Football Hub',
-    content: `Nếu bạn sở hữu sân bóng và muốn đăng ký lên Football Hub:
+    title: 'Cách đăng ký trở thành chủ sân trên ChanDenClub',
+    content: `Nếu bạn sở hữu sân bóng và muốn đăng ký lên ChanDenClub:
 1. Đăng nhập tài khoản → Vào "Đăng ký chủ sân".
 2. Điền thông tin sân: tên, địa chỉ, loại sân, giờ mở cửa, giá.
-3. Tải lên hình ảnh sân (tối thiểu 3 ảnh).
+3. Tải lên hình ảnh sân .
 4. Gửi yêu cầu duyệt. Admin sẽ xem xét trong 1-3 ngày làm việc.
 5. Sau khi duyệt, sân của bạn sẽ xuất hiện trong danh sách tìm kiếm.
-Hoa hồng nền tảng: Football Hub thu 10% trên mỗi giao dịch thành công.`,
+Hoa hồng nền tảng: ChanDenClub thu 10% trên mỗi giao dịch thành công.`,
   },
   {
     category: 'guide',
@@ -202,7 +202,7 @@ Hoa hồng nền tảng: Football Hub thu 10% trên mỗi giao dịch thành cô
   {
     category: 'pricing',
     title: 'Giá thuê sân bóng trung bình là bao nhiêu?',
-    content: `Giá thuê sân bóng trên Football Hub dao động tùy loại sân và khu vực:
+    content: `Giá thuê sân bóng trên ChanDenClub dao động tùy loại sân và khu vực:
 - Sân 5 người: 150.000 - 350.000 VNĐ/giờ
 - Sân 7 người: 250.000 - 600.000 VNĐ/giờ
 - Sân 11 người: 500.000 - 1.500.000 VNĐ/giờ
@@ -218,8 +218,8 @@ Khung giờ và mức giá cụ thể hiển thị rõ khi bạn chọn sân và
   },
   {
     category: 'pricing',
-    title: 'Football Hub có khuyến mãi hoặc giảm giá không?',
-    content: `Football Hub định kỳ có các chương trình khuyến mãi:
+    title: 'ChanDenClub có khuyến mãi hoặc giảm giá không?',
+    content: `ChanDenClub định kỳ có các chương trình khuyến mãi:
 - Ưu đãi người dùng mới: Giảm 10-20% cho lần đặt sân đầu tiên.
 - Flash sale: Một số sân giảm giá vào giờ thấp điểm chưa được đặt.
 - Combo đặt nhiều: Đặt từ 5 buổi trở lên tại một sân → có thể thỏa thuận giá ưu đãi trực tiếp với chủ sân.
@@ -228,7 +228,7 @@ Các khuyến mãi hiện tại được thông báo trên trang chủ và qua e
   {
     category: 'pricing',
     title: 'Tôi có thể thanh toán tiền mặt không?',
-    content: `Hiện tại Football Hub chỉ hỗ trợ thanh toán online qua VNPay (bao gồm ATM nội địa, Visa/Mastercard, và các ví điện tử như MoMo, ZaloPay). Chưa hỗ trợ thanh toán tiền mặt trực tiếp qua nền tảng. Nếu muốn thanh toán tiền mặt, bạn có thể liên hệ trực tiếp với chủ sân (không qua Football Hub).`,
+    content: `Hiện tại ChanDenClub chỉ hỗ trợ thanh toán online qua VNPay (bao gồm ATM nội địa, Visa/Mastercard, và các ví điện tử như MoMo, ZaloPay). Chưa hỗ trợ thanh toán tiền mặt trực tiếp qua nền tảng. Nếu muốn thanh toán tiền mặt, bạn có thể liên hệ trực tiếp với chủ sân (không qua ChanDenClub).`,
   },
 
   // ═══════════════════════════════════════
@@ -236,10 +236,10 @@ Các khuyến mãi hiện tại được thông báo trên trang chủ và qua e
   // ═══════════════════════════════════════
   {
     category: 'casual_match',
-    title: 'Trận vãng lai (Casual Match) là gì?',
+    title: 'Trận vãng lai là gì?',
     content: `Trận vãng lai là tính năng giúp bạn tạo một trận đấu công khai để rủ người khác cùng chơi, ngay cả khi không đủ người quen. Cách hoạt động:
-1. Bạn đã đặt sân thành công (CONFIRMED + đã thanh toán).
-2. Bạn tạo "Trận vãng lai" từ booking đó, đặt tiêu đề, mô tả, mức giá chia sẻ (slot price).
+1. Bạn đã đặt sân thành công .
+2. Bạn tạo "Trận vãng lai" từ booking đó, đặt tiêu đề, mô tả, mức giá chia sẻ .
 3. Người dùng khác có thể thấy trận của bạn, đăng ký tham gia và thanh toán phần của họ.
 4. Bạn (host) sẽ nhận lại một phần chi phí từ người tham gia.`,
   },
@@ -250,9 +250,8 @@ Các khuyến mãi hiện tại được thông báo trên trang chủ và qua e
 1. Đảm bảo bạn đã có booking ở trạng thái CONFIRMED và đã thanh toán.
 2. Vào trang chủ → nhấn "Tạo trận ngẫu hứng".
 3. Chọn booking muốn tạo trận từ danh sách.
-4. Điền thông tin: Tên trận, mô tả, giá mỗi slot, hạn đăng ký (join deadline), chế độ đội (team mode), trình độ yêu cầu.
-5. Chọn hiển thị Public hoặc Private.
-6. Nhấn "Tạo trận".
+4. Điền thông tin: Tên trận, mô tả, giá mỗi slot, hạn đăng ký, chế độ đội , trình độ yêu cầu.
+5. Nhấn "Tạo trận".
 Sau khi tạo, trận sẽ xuất hiện trong trang cộng đồng để người khác tìm và tham gia.`,
   },
   {
@@ -288,7 +287,7 @@ Bạn chỉ có thể đăng ký khi trạng thái là Đang mở đăng ký, c�
   },
   {
     category: 'casual_match',
-    title: 'Trình độ chơi (skill level) trong trận vãng lai có ý nghĩa gì?',
+    title: 'Trình độ chơi trong trận vãng lai có ý nghĩa gì?',
     content: `Khi tạo trận vãng lai, host có thể đặt yêu cầu trình độ:
 - (Mới bắt đầu): Phù hợp người mới chơi, mang tính giao lưu.
 - (Trung bình): Đã có kinh nghiệm, chơi được ở mức độ vừa phải.
@@ -300,8 +299,8 @@ Bạn chỉ có thể đăng ký khi trạng thái là Đang mở đăng ký, c�
     title: 'Host trận vãng lai có thể chỉnh sửa trận không?',
     content: `Host có thể chỉnh sửa một số thông tin của trận vãng lai nếu chưa có ai đăng ký tham gia:
 - Có thể sửa: Tên trận, mô tả, giá slot, hạn đăng ký, chế độ công khai, chế độ đội, trình độ.
-- Không thể sửa: Sân bóng, ngày giờ chơi (vì đã gắn với booking cố định).
-- Bị chặn sửa khi: Đã có người tham gia. Hệ thống sẽ báo lỗi 409.
+- Không thể sửa: Sân bóng, ngày giờ chơi.
+- Bị chặn sửa khi: Đã có người tham gia.
 Để sửa: Vào "Quản lý trận vãng lai" → chọn trận → nhấn "Chỉnh sửa".`,
   },
   {
@@ -328,7 +327,7 @@ Bạn có thể chuyển đổi giữa Public/Private miễn là chưa có ngư�
   {
     category: 'support',
     title: 'Làm thế nào để liên hệ hỗ trợ?',
-    content: `Football Hub hỗ trợ qua nhiều kênh:
+    content: `ChanDenClub hỗ trợ qua nhiều kênh:
 - Email: support@footballhub.vn (phản hồi trong 24 giờ làm việc)
 - Chat trực tiếp: Nhấn icon chat góc phải màn hình khi đăng nhập.
 - Chatbot AI: Trả lời ngay các câu hỏi thường gặp 24/7.
@@ -339,9 +338,9 @@ Bạn có thể chuyển đổi giữa Public/Private miễn là chưa có ngư�
     title: 'Sân tôi đặt bị đóng cửa vào ngày chơi, phải xử lý thế nào?',
     content: `Trong trường hợp sân đóng cửa đột xuất vào ngày bạn đã đặt:
 1. Chủ sân có trách nhiệm thông báo cho bạn sớm nhất qua email/SMS.
-2. Football Hub sẽ hoàn tiền 100% về phương thức thanh toán ban đầu.
+2. ChanDenClub sẽ hoàn tiền 100% về phương thức thanh toán ban đầu.
 3. Nếu không nhận được thông báo và chủ sân không hoàn tiền: Liên hệ support với bằng chứng (ảnh sân đóng cửa, mã booking).
-Football Hub cam kết bảo vệ quyền lợi người dùng trong mọi tình huống.`,
+ChanDenClub cam kết bảo vệ quyền lợi người dùng trong mọi tình huống.`,
   },
 ];
 

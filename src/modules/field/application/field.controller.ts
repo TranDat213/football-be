@@ -103,7 +103,7 @@ export class FieldController {
   async upload(req: Request, res: Response, _next: NextFunction) {
     const imageFile = req.file as Express.Multer.File;
     if (!imageFile) {
-      throw new BadRequestException('No image file provided');
+      throw new BadRequestException('Vui lòng cung cấp file ảnh.');
     }
     const result = await this.fieldService.uploadImage(imageFile);
     return res.status(201).json({

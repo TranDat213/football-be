@@ -138,6 +138,20 @@ export class BookingController {
     });
   }
 
+  async confirmArrival(req: Request, res: Response, _next: NextFunction) {
+    const ownerId = req.user?.id as string;
+    const bookingId = req.params.id as string;
+    const result = await this.bookingService.confirmArrival(ownerId, bookingId);
+    return res.status(200).json(result);
+  }
+
+  async reclaimBooking(req: Request, res: Response, _next: NextFunction) {
+    const ownerId = req.user?.id as string;
+    const bookingId = req.params.id as string;
+    const result = await this.bookingService.reclaimBooking(ownerId, bookingId);
+    return res.status(200).json(result);
+  }
+
   async ownerCancelBooking(req: Request, res: Response, _next: NextFunction) {
     const ownerId = req.user?.id as string;
     const bookingId = req.params.id as string;

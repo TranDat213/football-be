@@ -32,14 +32,14 @@ export class SubFieldService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerException('Failed to generate code');
+      throw new InternalServerException('Tạo mã sân con thất bại.');
     }
   }
 
   async getSubfield(id: string): Promise<FieldYard> {
     const subfield = await this.subFieldRepository.getSubfield(id);
     if (!subfield) {
-      throw new BadRequestException('Subfield not found');
+      throw new BadRequestException('Không tìm thấy sân con.');
     }
     return subfield;
   }
@@ -55,7 +55,7 @@ export class SubFieldService {
   ): Promise<FieldYard[]> {
     const field = await this.subFieldRepository.findFieldByFieldId(field_id);
     if (!field) {
-      throw new BadRequestException('Field not found');
+      throw new BadRequestException('Không tìm thấy sân bóng.');
     }
     return await this.subFieldRepository.findSubfieldsByFieldId(
       page,

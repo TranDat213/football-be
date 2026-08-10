@@ -43,13 +43,11 @@ categoryRouter.delete(
 categoryRouter.get(
   '/:id',
   authenticate,
-  authorize(UserRole.ADMIN, UserRole.OWNER),
   asyncHandler(categoryController.findById.bind(categoryController)),
 );
 categoryRouter.get(
   '/',
   authenticate,
-  authorize(UserRole.ADMIN, UserRole.OWNER),
   asyncHandler(categoryController.findAll.bind(categoryController)),
 );
 

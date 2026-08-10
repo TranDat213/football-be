@@ -77,7 +77,7 @@ export class PaymentService {
     return await this.transactionManager.run(async (tx) => {
       // 1. Get booking with lock
       const booking = await this.bookingRepository.findByIdWithLock(bookingId, tx);
-      if (!booking) throw new NotFoundException('Booking not found');
+      if (!booking) throw new NotFoundException('Không tìm thấy đơn đặt sân');
 
       // 2. Idempotency guard — if already paid, return early
       if (booking.payment && booking.payment.status === PaymentStatus.PAID) {
@@ -105,14 +105,14 @@ export class PaymentService {
         tx
       );
 
-      // 5. Create Commission (10%) if not exists
+      // 5. Create Commission (5%) if not exists
       const existingCommission = await this.commissionRepository.findByBookingId(bookingId, tx);
       if (!existingCommission) {
         await this.commissionRepository.create(
           {
             bookingId,
-            amount: Number(booking.totalPrice) * 0.01,
-            percentage: 1,
+            amount: Number(booking.totalPrice) * 0.05,
+            percentage: 5,
           },
           tx
         );

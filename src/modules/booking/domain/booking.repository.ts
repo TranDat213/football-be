@@ -54,6 +54,11 @@ export interface IBookingRepository {
 
   createBookingWithLock(data: CreateBookingLockData): Promise<Booking>;
   releaseExpiredLocks(): Promise<number>;
+  // Offline booking workflow
+  confirmArrival(bookingId: string): Promise<Booking>;
+  reclaimBooking(params: { bookingId: string; fieldYardId: string; bookingDate: string; startTime: string; endTime: string }): Promise<Booking>;
+  releaseExpiredOfflineLocks(): Promise<{ count: number; bookings: { id: string; ownerId: string; fieldName: string; startTime: string; bookingDate: string }[] }>;
+  cancelZombieOfflineBookings(): Promise<{ count: number; bookings: { id: string; ownerId: string; fieldName: string; startTime: string; bookingDate: string }[] }>;
   findYardWithOwnerById(id: string): Promise<FieldYard | null>;
   findFieldByFieldId(id:string): Promise<FootballField | null>;
   findWithDetails(id: string): Promise<BookingWithDetails | null>;

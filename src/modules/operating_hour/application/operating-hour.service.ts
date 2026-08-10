@@ -14,7 +14,7 @@ export class OperatingHourService {
 
   async getById(id: string): Promise<FieldTimeSlot> {
     const existing = await this.operatingHourRepository.findById(id);
-    if (!existing) throw new BadRequestException('Time slot not found');
+    if (!existing) throw new BadRequestException('Không tìm thấy khung giờ.');
     return existing;
   }
 

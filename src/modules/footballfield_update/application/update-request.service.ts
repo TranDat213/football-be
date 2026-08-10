@@ -27,15 +27,15 @@ export class FootballFieldUpdateRequestService {
     // 1. Kiểm tra field tồn tại và thuộc owner
     const field = await this.fieldRepo.findById(fieldId);
     if (!field) {
-      throw new BadRequestException('Football field not found');
+      throw new BadRequestException('Không tìm thấy sân bóng.');
     }
     if (field.ownerId !== ownerId) {
       throw new BadRequestException(
-        'You do not have permission to update this field',
+        'Bạn không có quyền cập nhật sân này.',
       );
     }
     if (field.status !== FieldStatus.ACTIVE) {
-      throw new BadRequestException('Field is not Active');
+      throw new BadRequestException('Sân bóng không ở trạng thái hoạt động.');
     }
 
     // 2. Chỉ cho phép 1 request PENDING tại 1 thời điểm
@@ -45,7 +45,7 @@ export class FootballFieldUpdateRequestService {
     );
     if (existingPending) {
       throw new BadRequestException(
-        'A pending update request already exists for this field',
+        'Đã có yêu cầu cập nhật đang chờ xử lý cho sân này.',
       );
     }
 
@@ -53,7 +53,7 @@ export class FootballFieldUpdateRequestService {
     if (dto?.categoryId) {
       const category = await this.categoryRepo.findById(dto.categoryId);
       if (!category) {
-        throw new BadRequestException('Category not found');
+        throw new BadRequestException('Không tìm thấy danh mục.');
       }
     }
 
@@ -85,7 +85,7 @@ export class FootballFieldUpdateRequestService {
       !request ||
       request.status !== FootballFieldUpdateRequestStatus.PENDING
     ) {
-      throw new BadRequestException('Update request not found or not pending');
+      throw new BadRequestException('Không tìm thấy yêu cầu cập nhật hoặc yêu cầu không ở trạng thái chờ.');
     }
 
     const payload =
@@ -100,7 +100,7 @@ export class FootballFieldUpdateRequestService {
     } catch (error) {
       console.log('applyUpdateRequest failed', error); // log full stack
       throw new InternalServerException(
-        `Failed to apply updates: ${error instanceof Error ? error.message : 'unknown error'}`,
+        `Áp dụng cập nhật thất bại: ${error instanceof Error ? error.message : 'lỗi không xác định'}`,
       );
     }
 
@@ -137,7 +137,7 @@ export class FootballFieldUpdateRequestService {
       !request ||
       request.status !== FootballFieldUpdateRequestStatus.PENDING
     ) {
-      throw new BadRequestException('Update request not found or not pending');
+      throw new BadRequestException('Không tìm thấy yêu cầu cập nhật hoặc yêu cầu không ở trạng thái chờ.');
     }
 
     const updatedRequest = await this.requestRepo.updateStatus(requestId, {
@@ -166,7 +166,7 @@ export class FootballFieldUpdateRequestService {
       !request ||
       request.status !== FootballFieldUpdateRequestStatus.PENDING
     ) {
-      throw new BadRequestException('Update request not found or not pending');
+      throw new BadRequestException('Không tìm thấy yêu cầu cập nhật hoặc yêu cầu không ở trạng thái chờ.');
     }
     return await this.requestRepo.softDelete(id);
   }

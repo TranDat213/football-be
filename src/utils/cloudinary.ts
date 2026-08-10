@@ -56,6 +56,6 @@ export const deleteImageFromCloudinary = async (
   });
 
   if (result.result !== 'ok' && result.result !== 'not found') {
-    throw new Error(`Failed to delete image: ${result.result}`);
+    throw new Error(`Xóa ảnh thất bại: ${result.result}`);
   }
 };

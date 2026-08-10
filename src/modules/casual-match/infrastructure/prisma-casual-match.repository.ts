@@ -95,33 +95,35 @@ export class PrismaCasualMatchRepository implements ICasualMatchRepository {
       status: status ? (status as any) : CasualMatchStatus.OPEN,
       visibility: 'PUBLIC',
       deletedAt: null,
-      OR: [
-        { joinDeadline: null },
-        { joinDeadline: { gt: new Date() } }
-      ],
+      OR: [{ joinDeadline: null }, { joinDeadline: { gt: new Date() } }],
       booking: {
         deletedAt: null,
         bookingDate: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }, // only today onwards
         fieldYard: {
           footballField: {
-            ...(province && { province: { contains: province, mode: 'insensitive' } }),
-            ...(district && { district: { contains: district, mode: 'insensitive' } }),
+            ...(province && {
+              province: { contains: province, mode: 'insensitive' },
+            }),
+            ...(district && {
+              district: { contains: district, mode: 'insensitive' },
+            }),
             ...(footballFieldId && { id: footballFieldId }),
             ...(category && {
-              OR: [
-                { categoryId: category },
-                { category: { slug: category } }
-              ]
+              OR: [{ categoryId: category }, { category: { slug: category } }],
             }),
           },
           ...(yardType && { type: yardType as any }),
         },
         ...(bookingDate && { bookingDate: new Date(bookingDate) }),
-        ...(startTime && { startTime: new Date(`1970-01-01T${startTime}:00Z`) }),
+        ...(startTime && {
+          startTime: new Date(`1970-01-01T${startTime}:00Z`),
+        }),
       },
       ...(skillLevel && { skillLevel: skillLevel as any }),
       ...(maxSlotPrice !== undefined && { slotPrice: { lte: maxSlotPrice } }),
-      ...(minSlotsAvailable !== undefined && { availableSlots: { gte: minSlotsAvailable } }),
+      ...(minSlotsAvailable !== undefined && {
+        availableSlots: { gte: minSlotsAvailable },
+      }),
     };
 
     if (keyword) {
@@ -137,17 +139,19 @@ export class PrismaCasualMatchRepository implements ICasualMatchRepository {
                     OR: [
                       { name: { contains: keyword, mode: 'insensitive' } },
                       { address: { contains: keyword, mode: 'insensitive' } },
-                    ]
-                  }
-                }
-              }
-            }
-          ]
-        }
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+        },
       ];
     }
 
-    let orderBy: Prisma.CasualMatchOrderByWithRelationInput = { createdAt: 'desc' };
+    let orderBy: Prisma.CasualMatchOrderByWithRelationInput = {
+      createdAt: 'desc',
+    };
     if (sortBy === 'price') {
       orderBy = { slotPrice: sortOrder || 'asc' };
     } else if (sortBy === 'newest') {
@@ -224,53 +228,53 @@ export class PrismaCasualMatchRepository implements ICasualMatchRepository {
   }
 
   async findByOwnerId(
-  ownerId: string,
-  filter: OwnerFilter,
-): Promise<{ data: CasualMatch[]; total: number }> {
-  const { status, date, page = 1, limit = 10 } = filter;
+    ownerId: string,
+    filter: OwnerFilter,
+  ): Promise<{ data: CasualMatch[]; total: number }> {
+    const { status, date, page = 1, limit = 10 } = filter;
 
-  const where: Prisma.CasualMatchWhereInput = {
-    deletedAt: null,
+    const where: Prisma.CasualMatchWhereInput = {
+      deletedAt: null,
 
-    ...(status && { status }),
+      ...(status && { status }),
 
-    booking: {
-      fieldYard: {
-        footballField: {
-          ownerId,
+      booking: {
+        fieldYard: {
+          footballField: {
+            ownerId,
+          },
         },
+        ...(date && {
+          bookingDate: new Date(date),
+        }),
       },
-      ...(date && {
-        bookingDate: new Date(date),
-      }),
-    },
-  };
+    };
 
-  const [data, total] = await Promise.all([
-    this.prisma.casualMatch.findMany({
-      where,
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: {
-        createdAt: 'desc',
-      },
-      include: {
-        booking: {
-          include: {
-            fieldYard: {
-              include: {
-                footballField: true,
+    const [data, total] = await Promise.all([
+      this.prisma.casualMatch.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        include: {
+          booking: {
+            include: {
+              fieldYard: {
+                include: {
+                  footballField: true,
+                },
               },
             },
           },
         },
-      },
-    }),
-    this.prisma.casualMatch.count({ where }),
-  ]);
+      }),
+      this.prisma.casualMatch.count({ where }),
+    ]);
 
-  return { data, total };
-}
+    return { data, total };
+  }
 
   async update(
     id: string,
@@ -385,7 +389,9 @@ export class PrismaCasualMatchRepository implements ICasualMatchRepository {
       deletedAt: null,
       ...(joinStatus && { joinStatus }),
       ...(paymentStatus && { paymentStatus }),
-      ...(date && { casualMatch: { booking: { bookingDate: new Date(date) } } }),
+      ...(date && {
+        casualMatch: { booking: { bookingDate: new Date(date) } },
+      }),
     };
 
     const [data, total] = await Promise.all([
@@ -402,7 +408,14 @@ export class PrismaCasualMatchRepository implements ICasualMatchRepository {
                   fieldYard: { include: { footballField: true } },
                 },
               },
-              host: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+              host: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatarUrl: true,
+                },
+              },
             },
           },
         },
@@ -426,6 +439,20 @@ export class PrismaCasualMatchRepository implements ICasualMatchRepository {
             email: true,
             phone: true,
             avatarUrl: true,
+          },
+        },
+        casualMatch: {
+          include: {
+            host: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                avatarUrl: true,
+              },
+            },
           },
         },
       },
@@ -466,7 +493,16 @@ export class PrismaCasualMatchRepository implements ICasualMatchRepository {
     hostId: string;
     totalAmount: number;
   }): Promise<any> {
-    const { casualMatchId, userId, participantId, isPaid, slotCount, isFull, hostId, totalAmount } = params;
+    const {
+      casualMatchId,
+      userId,
+      participantId,
+      isPaid,
+      slotCount,
+      isFull,
+      hostId,
+      totalAmount,
+    } = params;
 
     return this.prisma.$transaction(async (tx) => {
       let finalPayStatus: any = 'UNPAID';
@@ -483,7 +519,8 @@ export class PrismaCasualMatchRepository implements ICasualMatchRepository {
             entityId: casualMatchId,
             type: 'CASUAL_MATCH_JOINED',
             title: 'Người chơi đã hủy slot',
-            content: 'Có một người chơi vừa hủy slot tham gia và đã được hoàn tiền.',
+            content:
+              'Có một người chơi vừa hủy slot tham gia và đã được hoàn tiền.',
           },
         });
 
@@ -523,4 +560,3 @@ export class PrismaCasualMatchRepository implements ICasualMatchRepository {
     });
   }
 }
-
