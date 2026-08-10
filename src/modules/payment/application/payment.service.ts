@@ -105,14 +105,14 @@ export class PaymentService {
         tx
       );
 
-      // 5. Create Commission (10%) if not exists
+      // 5. Create Commission (5%) if not exists
       const existingCommission = await this.commissionRepository.findByBookingId(bookingId, tx);
       if (!existingCommission) {
         await this.commissionRepository.create(
           {
             bookingId,
-            amount: Number(booking.totalPrice) * 0.01,
-            percentage: 1,
+            amount: Number(booking.totalPrice) * 0.05,
+            percentage: 5,
           },
           tx
         );
