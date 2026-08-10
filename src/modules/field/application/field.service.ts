@@ -196,9 +196,7 @@ export class FieldService {
 
     const yards = await this.fieldRepository.getAvailability(fieldId, date);
 
-    const rawCutoff = Number(Env.CUTOFF_MINUTES);
-    const cutoffMs = rawCutoff < 10000 ? rawCutoff * 60 * 1000 : rawCutoff;
-    const cutoffTime = new Date(Date.now() + cutoffMs);
+
 
     const yardsWithSlots = yards.map((yard: any) => {
       const bookedRanges: [number, number][] = yard.bookings.map((b: any) => [
@@ -227,7 +225,7 @@ export class FieldService {
 
           const startFormatted = formatMinutes(start);
           const slotDateTime = new Date(`${dateStr}T${startFormatted}:00+07:00`);
-          const isPastOrCutoff = slotDateTime < cutoffTime;
+          const isPast = slotDateTime < new Date(); // khóa slot đã qua thời gian thực
 
           // 1-1: Prisma trả object đơn "priceRule", không phải mảng "priceRules"
           const rule = timeSlot.priceRule;
@@ -235,7 +233,7 @@ export class FieldService {
           slots.push({
             startTime: startFormatted,
             endTime: formatMinutes(end),
-            status: isBooked || isPastOrCutoff ? 'BOOKED' : 'AVAILABLE',
+            status: isBooked || isPast ? 'BOOKED' : 'AVAILABLE',
             price: rule ? Number(rule.price) : 0,
             priceLabel: timeSlot.label ?? null,
           });

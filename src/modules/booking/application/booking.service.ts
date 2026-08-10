@@ -39,13 +39,16 @@ export class BookingService {
       throw new BadRequestException('Sân hiện đang tạm ngưng hoạt động');
     }
 
-    this.validateCutoffTime(data.bookingDate, data.startTime);
+    // Chỉ chặn slot đã qua thời điểm hiện tại
+    const bookingStart = new Date(`${data.bookingDate}T${data.startTime}:00+07:00`);
+    if (bookingStart < new Date()) {
+      throw new BadRequestException('Không thể đặt sân cho khung giờ đã qua');
+    }
 
     const priceRules = await this.bookingRepository.findPriceRules(data.fieldYardId, data.bookingDate);
     const totalPrice = this.calculateTotalPrice(data.startTime, data.endTime, priceRules);
 
-    const requiresPrepayment = data.paymentMethod !== PaymentMethod.CASH;
-
+    // createBooking chỉ xử lý VNPAY — tiền mặt chuyển sang createOfflineBooking
     const booking = await this.bookingRepository.createBookingWithLock({
       userId,
       fieldYardId: data.fieldYardId,
@@ -55,10 +58,8 @@ export class BookingService {
       totalPrice,
       note: data.note,
       source: BookingSource.ONLINE,
-      // CASH -> đặt xong ngay, trả sau, khoá vĩnh viễn
-      // Online -> giữ chỗ tạm 15 phút chờ thanh toán
-      status: requiresPrepayment ? BookingStatus.AWAITING_PAYMENT : BookingStatus.PENDING,
-      expiresAt: requiresPrepayment ? new Date(Date.now() + Number(Env.LOCK_TTL_MINUTES)) : null,
+      status: BookingStatus.AWAITING_PAYMENT,
+      expiresAt: new Date(Date.now() + Number(Env.LOCK_TTL_MINUTES)),
     });
 
     // Notify owner about new booking (fire-and-forget)
@@ -90,40 +91,164 @@ export class BookingService {
     return booking;
   }
 
-async createOfflineBooking(ownerId: string, fieldYardId: string, data: CreateOfflineBookingDto) {
-    const yard = await this.bookingRepository.findYardWithOwnerById(fieldYardId);
+async createOfflineBooking(userId: string, fieldYardId: string, data: CreateOfflineBookingDto) {
+    // Cho phép cả USER lẫn OWNER gọi — không kiểm tra ownerId nữa
+    const yard = await this.bookingRepository.findYardById(fieldYardId);
     if (!yard) throw new NotFoundException('Sân con không tồn tại');
-    
-    const field = await this.bookingRepository.findFieldByFieldId(yard.footballFieldId);
-
-    if (field?.ownerId !== ownerId) {
-      throw new ForbiddenException('Bạn không có quyền thao tác trên sân này');
+    if (yard.status !== YardStatus.ACTIVE) {
+      throw new BadRequestException('Sân hiện đang tạm ngưng hoạt động');
     }
 
-    const contactInfo = [data.customerName, data.customerPhone].filter(Boolean).join(' - ');
-    const note = contactInfo
-      ? `[Đặt ngoài] Khách: ${contactInfo}`
-      : '[Đặt ngoài] Chủ sân khoá lịch thủ công';
+    // Chặn slot đã qua
+    const bookingStart = new Date(`${data.bookingDate}T${data.startTime}:00+07:00`);
+    if (bookingStart < new Date()) {
+      throw new BadRequestException('Không thể đặt sân cho khung giờ đã qua');
+    }
 
-    return await this.bookingRepository.createBookingWithLock({
-      userId: ownerId,
+    // Tính giá thực từ price rules
+    const priceRules = await this.bookingRepository.findPriceRules(fieldYardId, data.bookingDate);
+    const totalPrice = this.calculateTotalPrice(data.startTime, data.endTime, priceRules);
+
+    // Xây note: ưu tiên note của user, sau đó thông tin khách (owner tạo offline), cuối cùng default
+    const contactInfo = [data.customerName, data.customerPhone].filter(Boolean).join(' - ');
+    const note = data.note
+      ? data.note
+      : contactInfo
+        ? `[Đặt ngoài] Khách: ${contactInfo}`
+        : undefined;
+
+    // expiresAt = startTime - 30 phút (thời điểm tự mở khoá nếu chưa xác nhận)
+    const startDatetime = new Date(`${data.bookingDate}T${data.startTime}:00+07:00`);
+    const lockedUntil = new Date(startDatetime.getTime() - 30 * 60 * 1000);
+    const expiresAt = lockedUntil > new Date() ? lockedUntil : null;
+
+    const booking = await this.bookingRepository.createBookingWithLock({
+      userId,
       fieldYardId,
       bookingDate: data.bookingDate,
       startTime: data.startTime,
       endTime: data.endTime,
-      totalPrice: 0,
+      totalPrice,
       note,
       source: BookingSource.OFFLINE,
-      status: BookingStatus.CONFIRMED,
+      status: BookingStatus.PENDING,
       paymentStatus: PaymentStatus.UNPAID,
-      expiresAt: null,
+      expiresAt,
     });
+
+    // Notify owner về đơn tiền mặt mới (fire-and-forget)
+    this.prisma.fieldYard.findUnique({
+      where: { id: fieldYardId },
+      include: { footballField: true },
+    }).then((yard) => {
+      if (!yard?.footballField?.ownerId) return;
+      const startH = data.startTime.slice(0, 5);
+      const endH = data.endTime.slice(0, 5);
+      const unlockTime = expiresAt
+        ? `${String(lockedUntil.getHours()).padStart(2, '0')}:${String(lockedUntil.getMinutes()).padStart(2, '0')}`
+        : null;
+      const content = unlockTime
+        ? `Đơn tiền mặt tại sân ${yard.footballField.name} ngày ${data.bookingDate} khung giờ ${startH}-${endH}. Xác nhận khách đến trước ${unlockTime}, nếu không slot sẽ tự mở khoá.`
+        : `Đơn tiền mặt tại sân ${yard.footballField.name} ngày ${data.bookingDate} khung giờ ${startH}-${endH}.`;
+      return this.prisma.notification.create({
+        data: {
+          recipientId: yard.footballField.ownerId,
+          actorId: userId,
+          entityType: 'Booking',
+          entityId: booking.id,
+          type: 'BOOKING_CREATED' as any,
+          title: 'Đơn đặt sân tiền mặt mới.',
+          content,
+          metadata: {
+            bookingId: booking.id,
+            bookingDate: data.bookingDate,
+            timeSlot: `${startH}-${endH}`,
+            ...(unlockTime ? { unlockTime } : {}),
+          } as any,
+        },
+      });
+    }).catch(() => {});
+
+    return booking;
   }
   /**
    * Cancel a booking (>1h before start time limit)
    * - If UNPAID: sets status = CANCELLED
    * - If PAID: triggers VNPay mock refund, sets status = CANCELLED & paymentStatus = REFUNDED, creates Refund record and Notification
    */
+  async confirmArrival(ownerId: string, bookingId: string) {
+    const booking = await this.bookingRepository.findWithDetails(bookingId);
+    if (!booking) throw new NotFoundException('Không tìm thấy đơn đặt sân');
+    if (booking.source !== BookingSource.OFFLINE) throw new ForbiddenException('Chỉ áp dụng cho đơn đặt ngoài');
+    if (booking.status !== BookingStatus.PENDING) throw new BadRequestException('Đơn đặt sân không ở trạng thái chờ');
+    if ((booking as any).customerArrivedAt) throw new BadRequestException('Khách đã được xác nhận trước đó');
+    if (!booking.expiresAt) throw new BadRequestException('Slot đã được mở khoá, hãy xác nhận lại');
+    if (booking.fieldYard?.footballField?.ownerId !== ownerId) throw new ForbiddenException('Bạn không có quyền thao tác');
+
+    const updated = await this.bookingRepository.confirmArrival(bookingId);
+
+    // Notify owner xác nhận thành công (fire-and-forget)
+    const startTime = new Date(booking.startTime);
+    const startH = `${String(startTime.getUTCHours()).padStart(2, '0')}:${String(startTime.getUTCMinutes()).padStart(2, '0')}`;
+    this.prisma.notification.create({
+      data: {
+        recipientId: ownerId,
+        actorId: ownerId,
+        entityType: 'Booking',
+        entityId: bookingId,
+        type: 'OFFLINE_ARRIVAL_CONFIRM' as any,
+        title: 'Đã xác nhận khách đến sân',
+        content: `Khách đã đến, slot ${startH} ngày ${format(new Date(booking.bookingDate), 'dd/MM/yyyy')} tiếp tục được giữ.`,
+        metadata: { bookingId } as any,
+      },
+    }).catch(() => {});
+
+    return { success: true, message: 'Xác nhận khách đến thành công', data: updated };
+  }
+
+  async reclaimBooking(ownerId: string, bookingId: string) {
+    const booking = await this.bookingRepository.findWithDetails(bookingId);
+    if (!booking) throw new NotFoundException('Không tìm thấy đơn đặt sân');
+    if (booking.source !== BookingSource.OFFLINE) throw new ForbiddenException('Chỉ áp dụng cho đơn đặt ngoài');
+    if (booking.status !== BookingStatus.PENDING) throw new BadRequestException('Đơn đặt sân không ở trạng thái chờ');
+    if ((booking as any).customerArrivedAt) throw new BadRequestException('Khách đã được xác nhận trước đó');
+    if (booking.expiresAt) throw new BadRequestException('Slot chưa được mở khoá, hãy dùng Xác nhận đến sân');
+    if (booking.fieldYard?.footballField?.ownerId !== ownerId) throw new ForbiddenException('Bạn không có quyền thao tác');
+
+    // Kiểm tra chưa qua giờ bắt đầu
+    const bookingDateStr = format(new Date(booking.bookingDate), 'yyyy-MM-dd');
+    const startUtc = new Date(booking.startTime);
+    const startH = `${String(startUtc.getUTCHours()).padStart(2, '0')}:${String(startUtc.getUTCMinutes()).padStart(2, '0')}`;
+    const endUtc = new Date((booking as any).endTime);
+    const endH = `${String(endUtc.getUTCHours()).padStart(2, '0')}:${String(endUtc.getUTCMinutes()).padStart(2, '0')}`;
+    const matchStart = new Date(`${bookingDateStr}T${startH}:00+07:00`);
+    if (new Date() >= matchStart) throw new BadRequestException('Đã qua giờ bắt đầu, không thể xác nhận slot');
+
+    const updated = await this.bookingRepository.reclaimBooking({
+      bookingId,
+      fieldYardId: booking.fieldYardId,
+      bookingDate: bookingDateStr,
+      startTime: startH,
+      endTime: endH,
+    });
+
+    // Notify owner (fire-and-forget)
+    this.prisma.notification.create({
+      data: {
+        recipientId: ownerId,
+        actorId: ownerId,
+        entityType: 'Booking',
+        entityId: bookingId,
+        type: 'OFFLINE_ARRIVAL_CONFIRM' as any,
+        title: 'Đã xác nhận slot thành công',
+        content: `Khách đã đến trễ nhưng slot ${startH} ngày ${format(new Date(booking.bookingDate), 'dd/MM/yyyy')} vẫn còn trống và đã được giữ lại.`,
+        metadata: { bookingId } as any,
+      },
+    }).catch(() => {});
+
+    return { success: true, message: 'Claim lại slot thành công', data: updated };
+  }
+
   async cancelBooking(bookingId: string, userId: string, reason?: string) {
     const booking = await this.bookingRepository.findWithDetails(bookingId);
 

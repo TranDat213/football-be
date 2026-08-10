@@ -10,7 +10,7 @@ import { authorize } from '../middleware/authorize.middlerware';
 import { asyncHandler } from '../middleware/async-handler.middleware';
 import { validateDto } from '../middleware/validate-dto.middleware';
 import { UserRole } from '@prisma/client';
-import { CreateBookingDto } from '../modules/booking/dto/booking.dto';
+import { CreateBookingDto, CreateOfflineBookingDto } from '../modules/booking/dto/booking.dto';
 
 const bookingRouter = Router();
 
@@ -101,7 +101,7 @@ bookingRouter.get(
 bookingRouter.post(
   '/yards/:fieldYardId/offline',
   authenticate,
-  authorize(UserRole.OWNER),
+  validateDto(CreateOfflineBookingDto),
   asyncHandler(bookingController.createOfflineBooking.bind(bookingController)),
 );
 
@@ -110,6 +110,20 @@ bookingRouter.patch(
   authenticate,
   authorize(UserRole.OWNER),
   asyncHandler(bookingController.ownerCancelBooking.bind(bookingController)),
+);
+
+bookingRouter.patch(
+  '/:id/confirm-arrival',
+  authenticate,
+  authorize(UserRole.OWNER),
+  asyncHandler(bookingController.confirmArrival.bind(bookingController)),
+);
+
+bookingRouter.patch(
+  '/:id/reclaim',
+  authenticate,
+  authorize(UserRole.OWNER),
+  asyncHandler(bookingController.reclaimBooking.bind(bookingController)),
 );
 
 export default bookingRouter;

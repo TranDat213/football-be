@@ -321,7 +321,7 @@ export class PrismaBookingRepository implements IBookingRepository {
           totalPrice: data.totalPrice,
           status: data.status,
           paymentStatus: data.paymentStatus ?? PaymentStatus.UNPAID,
-          source: data.source ?? BookingSource.ONLINE,
+          source: data.source ,
           note: data.note,
           expiresAt: data.expiresAt ?? null,
         },
@@ -346,6 +346,135 @@ export class PrismaBookingRepository implements IBookingRepository {
     });
     return result.count;
   }
+
+  // Offline Job 2: Confirm arrival trước expiresAt — không cần lock
+  async confirmArrival(bookingId: string): Promise<Booking> {
+    return await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: { customerArrivedAt: new Date(), updatedAt: new Date() },
+    });
+  }
+
+  // Offline: reclaim sau khi slot đã mở khoá — cần advisory lock + conflict check
+  async reclaimBooking(params: {
+    bookingId: string;
+    fieldYardId: string;
+    bookingDate: string;
+    startTime: string;
+    endTime: string;
+  }): Promise<Booking> {
+    const { bookingId, fieldYardId, bookingDate, startTime, endTime } = params;
+    return await this.prisma.$transaction(async (tx) => {
+      const lockKey = this.buildLockKey(fieldYardId, bookingDate);
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+
+      // Conflict check: booking KHÁC đang giữ slot này
+      const conflictCount = await tx.booking.count({
+        where: {
+          ...this.buildConflictWhere(fieldYardId, bookingDate, startTime, endTime),
+          id: { not: bookingId },
+        },
+      });
+
+      if (conflictCount > 0) {
+        throw new BadRequestException('Khung giờ đã được người khác đặt trong thời gian mở khoá');
+      }
+
+      return await tx.booking.update({
+        where: { id: bookingId },
+        data: { customerArrivedAt: new Date(), updatedAt: new Date() },
+      });
+    });
+  }
+
+  // Cron Job 2: Mở khoá offline booking hết hạn giữ slot, trả về danh sách để gửi notify
+  async releaseExpiredOfflineLocks(): Promise<{
+    count: number;
+    bookings: { id: string; ownerId: string; fieldName: string; startTime: string; bookingDate: string }[];
+  }> {
+    const now = new Date();
+    const expired = await this.prisma.booking.findMany({
+      where: {
+        source: BookingSource.OFFLINE,
+        status: BookingStatus.PENDING,
+        expiresAt: { not: null, lt: now },
+        customerArrivedAt: null,
+        deletedAt: null,
+      },
+      include: { fieldYard: { include: { footballField: true } } },
+    });
+
+    if (expired.length === 0) return { count: 0, bookings: [] };
+
+    await this.prisma.booking.updateMany({
+      where: { id: { in: expired.map((b) => b.id) } },
+      data: { expiresAt: null, updatedAt: now },
+    });
+
+    return {
+      count: expired.length,
+      bookings: expired.map((b) => ({
+        id: b.id,
+        ownerId: (b.fieldYard as any)?.footballField?.ownerId ?? '',
+        fieldName: (b.fieldYard as any)?.footballField?.name ?? 'Sân bóng',
+        startTime: `${String(new Date(b.startTime).getUTCHours()).padStart(2, '0')}:${String(new Date(b.startTime).getUTCMinutes()).padStart(2, '0')}`,
+        bookingDate: b.bookingDate.toISOString().split('T')[0],
+      })),
+    };
+  }
+
+  // Cron Job 3: Tự cancel offline PENDING zombie (startTime+5min đã qua, chưa confirm)
+  async cancelZombieOfflineBookings(): Promise<{
+    count: number;
+    bookings: { id: string; ownerId: string; fieldName: string; startTime: string; bookingDate: string }[];
+  }> {
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+    // Lấy danh sách zombie: startTime đã qua, chưa confirm
+    const zombies = await this.prisma.booking.findMany({
+      where: {
+        source: BookingSource.OFFLINE,
+        status: BookingStatus.PENDING,
+        expiresAt: null,
+        customerArrivedAt: null,
+        deletedAt: null,
+        // startTime stored as Time (1970-01-01THH:mm:00Z), bookingDate as Date
+        // ponytail: filter bằng cách join bookingDate + startTime trong app
+      },
+      include: { fieldYard: { include: { footballField: true } } },
+    });
+
+    // Filter: (bookingDate + startTime) + 5min < now
+    const toCancel = zombies.filter((b) => {
+      const dateStr = b.bookingDate.toISOString().split('T')[0];
+      const timeStr = `${String(new Date(b.startTime).getUTCHours()).padStart(2, '0')}:${String(new Date(b.startTime).getUTCMinutes()).padStart(2, '0')}`;
+      const matchStart = new Date(`${dateStr}T${timeStr}:00+07:00`);
+      return matchStart < fiveMinAgo;
+    });
+
+    if (toCancel.length === 0) return { count: 0, bookings: [] };
+
+    await this.prisma.booking.updateMany({
+      where: { id: { in: toCancel.map((b) => b.id) } },
+      data: {
+        status: BookingStatus.CANCELLED,
+        cancelledAt: new Date(),
+        cancelledReason: 'Khách không đến sân, tự động huỷ sau giờ bắt đầu',
+      },
+    });
+
+    return {
+      count: toCancel.length,
+      bookings: toCancel.map((b) => ({
+        id: b.id,
+        ownerId: (b.fieldYard as any)?.footballField?.ownerId ?? '',
+        fieldName: (b.fieldYard as any)?.footballField?.name ?? 'Sân bóng',
+        startTime: `${String(new Date(b.startTime).getUTCHours()).padStart(2, '0')}:${String(new Date(b.startTime).getUTCMinutes()).padStart(2, '0')}`,
+        bookingDate: b.bookingDate.toISOString().split('T')[0],
+      })),
+    };
+  }
+
 
   async findYardWithOwnerById(id: string): Promise<FieldYard | null> {
     return await this.prisma.fieldYard.findUnique({
